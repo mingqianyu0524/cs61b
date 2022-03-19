@@ -113,10 +113,93 @@ public class Model extends Observable {
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-
+        switch (side) {
+            case NORTH:
+                changed = tiltNorth(this.board);
+                break;
+            case WEST:
+                this.board.setViewingPerspective(Side.WEST);
+                changed = tiltNorth(this.board);
+                this.board.setViewingPerspective(Side.NORTH);
+                break;
+            case EAST:
+                this.board.setViewingPerspective(Side.EAST);
+                changed = tiltNorth(this.board);
+                this.board.setViewingPerspective(Side.NORTH);
+                break;
+            case SOUTH:
+                this.board.setViewingPerspective(Side.SOUTH);
+                changed = tiltNorth(this.board);
+                this.board.setViewingPerspective(Side.NORTH);
+                break;
+            default: break;
+        }
         checkGameOver();
         if (changed) {
             setChanged();
+        }
+        return changed;
+    }
+
+    /** Tilt the board toward north */
+    private boolean tiltNorth(Board board) {
+        /* Starting from the top row, move tiles up if
+         * 1. The space above is empty
+         * 2. The space above has the same value as itself
+         */
+        boolean changed = false;
+        /* Consult array to see if current move can merge:
+         * 0: can merge
+         * 1: can't merge */
+        int[] canMerge = new int[4];
+
+        for (int r = 2; r > -1; --r) {
+            for (int c = 0; c < 4; ++c) {
+                Tile curTile = board.tile(c, r);
+                if (curTile == null) continue;
+                Tile prevTile = null;
+                /* Find the previous non-null tile from the current tile */
+                for (int rPrime = r + 1; rPrime < 4; rPrime++) {
+                     prevTile = board.tile(c, rPrime);
+                    if (prevTile != null) break;
+                }
+                /* If prevTile is null, move current tile to (c, 3) */
+                if (prevTile == null) {
+                    board.move(c, 3, curTile);
+                    changed = true;
+                    continue;
+                }
+                /* Else if prevTile did not move:
+                 * Merge curTile with prevTile if they have the same value;
+                 * Move curTile to space below prevTile otherwise */
+                if (prevTile.distToNext() == 0) {
+                    if (prevTile.value() == curTile.value()) {
+                        board.move(prevTile.col(), prevTile.row(), curTile);
+                        this.score += curTile.next().value();
+                        changed = true;
+                    } else {
+                        board.move(prevTile.col(), prevTile.row() - 1, curTile);
+                        if (curTile.distToNext() != 0) changed = true;
+                    }
+                }
+                /* Else if prevTile moved, find out where it moved to by accessing prevTile.next():
+                 * If prevTile.next.value != curTile.value, move to space below prevTile;
+                 * Otherwise, merge only when prevTile didn't merge */
+                else {
+                    if (prevTile.next().value() != curTile.value()) {
+                        board.move(prevTile.next().col(), prevTile.next().row() - 1, curTile);
+                    } else {
+                        // If prevTile has merged, don't merge
+                        if (prevTile.next().value() == 2* prevTile.value()) {
+                            board.move(prevTile.next().col(), prevTile.next().row() - 1, curTile);
+                        } else {
+                            board.move(prevTile.next().col(), prevTile.next().row(), curTile);
+                            this.score += curTile.next().value();
+                        }
+                    }
+                    // changed = true; /* No need to set changed because it has been set previously */
+                }
+            }
         }
         return changed;
     }
