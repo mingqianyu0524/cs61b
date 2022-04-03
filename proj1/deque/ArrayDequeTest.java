@@ -3,7 +3,6 @@ package deque;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 public class ArrayDequeTest {
     @Test
@@ -120,5 +119,34 @@ public class ArrayDequeTest {
         for (double i = 999999; i > 500000; i--) {
             assertEquals("Should have the same value", i, (double) ad1.removeLast(), 0.0);
         }
+    }
+
+    @Test
+    /* Simulation of AG test b01 */
+    public void AGGetTest() {
+        ArrayDeque<Integer> ad1 = new ArrayDeque<>();
+        for (int i = 0; i < 6; i++) {
+            ad1.addLast(i);
+        }
+        assertEquals("Should have the same value", 0, (double) ad1.get(0), 0.0);
+    }
+
+    @Test
+    /* Simulation of AG test b03 */
+    public void AGFillUpTest() {
+        ArrayDeque<Integer> ad1 = new ArrayDeque<>();
+        // Fill up
+        for (int i = 0; i < 10000; i++) {
+            ad1.addLast(i);
+        }
+        // Empty
+        for (int i = 0; i < 10000; i++) {
+            assertEquals("Should have the same value", i, (double) ad1.removeFirst(), 0.0);
+        }
+        // Fill up again
+        for (int i = 0; i < 10000; i++) {
+            ad1.addLast(i);
+        }
+        assertEquals("Should have the same value", 9999, ad1.get(9999), 0.0);
     }
 }

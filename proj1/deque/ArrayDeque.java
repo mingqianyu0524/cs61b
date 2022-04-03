@@ -15,20 +15,20 @@ public class ArrayDeque<T> {
         capacity = 8;
     }
 
-    private void resize(int cap) {
-        // Create a new array of size cap
-        T[] a = (T[]) new Object[cap];
+    private void resize(int new_capacity) {
+        // Create a new array of size new_capacity
+        T[] a = (T[]) new Object[new_capacity];
         // Copy items into new array
-        if (cap > capacity) {
+        if (new_capacity > capacity) {
             System.arraycopy(items, first, a, 0, capacity - first);
             System.arraycopy(items, 0, a, capacity - first, first);
             last = capacity - 1;
         } else {
             int j = 0;
             for (int i = 0; i < capacity; ++i) if (items[i] != null) a[j++] = items[i];
-            last = cap - 1;
+            last = new_capacity - 1;
         }
-        capacity = cap;
+        capacity = new_capacity;
         first = 0;
         items = a;
     }
@@ -76,7 +76,7 @@ public class ArrayDeque<T> {
         // Update first
         if (++first >= capacity) first -= capacity;
         // Shrink the array if size = 1/4 of the capacity, and update size
-        if (--size == 1/4 * capacity) resize(1/4 * capacity);
+        if (--size == 1/4 * capacity && size > 1) resize(1/4 * capacity);
         return temp;
     }
 
@@ -88,11 +88,12 @@ public class ArrayDeque<T> {
         // Update last
         if (--last < 0 ) last += capacity;
         // Shrink the array if size = 1/4 of the capacity, and update size
-        if (--size == 1/4 * capacity) resize(1/4 * capacity);
+        if (--size == 1/4 * capacity && size > 1) resize(1/4 * capacity);
         return temp;
     }
 
     public T get(int index) {
-        return items[index];
+        if (first + index < capacity) return items[first + index];
+        return items[first + index - capacity];
     }
 }
