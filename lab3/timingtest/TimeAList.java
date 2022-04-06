@@ -29,7 +29,7 @@ public class TimeAList {
         AList<Double> times = new AList<>();
         AList<Integer> opCounts = new AList<>();
 
-        for (int i = 1000; i < 256000; i = i * 2) {
+        for (int i = 1000; i < 256000; i *= 2) {
             AList<Integer> items = new AList<>();
             Stopwatch sw = new Stopwatch();
             for (int j = 0; j < i; j++) {
