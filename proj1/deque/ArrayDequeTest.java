@@ -193,4 +193,19 @@ public class ArrayDequeTest {
 
         assertEquals("Should be equal ", 2500, ad1.size());
     }
+
+    @Test
+    public void equalCrossTest() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+        LinkedListDeque<Integer> lld = new LinkedListDeque<>();
+
+        for (int i = 0; i < 100; i++) {
+            int num = (int) Math.round(Math.random() * 100);
+            ad.addLast(num);
+            lld.addLast(num);
+        }
+
+        boolean isEqual = ad.equals(lld);
+        assertTrue(isEqual);
+    }
 }
