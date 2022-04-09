@@ -305,18 +305,20 @@ public class ArrayDequeTest {
         ArrayDeque<Integer> ad = new ArrayDeque<>();
 
         ad.addLast(0);
-        ad.addFirst(1);
+        ad.get(0);
         ad.addFirst(2);
-        ad.addFirst(3);
-        ad.addLast(4);
+        ad.removeFirst();
+        ad.addLast(7);
+        ad.addFirst(9);
+        ad.removeFirst();
+        int ans = ad.get(1);
+        assert ans == 7;
+        ad.addFirst(12);
         ad.removeLast();
-        ad.removeLast();
-        ad.removeLast();
-        ad.addLast(8);
-        ad.addLast(9);
-
-        int ans = ad.removeFirst();
-
-        assert ans == 3;
+        ad.addFirst(14);
+        ans = ad.get(1);
+        assert ans == 12;
+        ans = ad.get(2);
+        assert ans == 0;
     }
 }

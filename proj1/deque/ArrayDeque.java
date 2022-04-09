@@ -45,9 +45,9 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
             if (size == capacity) {
                 first++;
                 resize(capacity * 2);
-            } else {
-                first += capacity;
+                first--;
             }
+            first += capacity;
         }
         // Add item to items[first]
         items[first] = item;
