@@ -92,8 +92,9 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
             first -= capacity;
         }
         // Shrink the array if size = 1/4 of the capacity, and update size
-        if (--size == 1 / 4 * capacity && size > 1) {
-            resize(1 / 4 * capacity);
+        int quarter = (int) Math.round(0.25 * capacity);
+        if (--size == quarter  && size > 1) {
+            resize(quarter);
         }
         return temp;
     }
@@ -110,8 +111,9 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
             last += capacity;
         }
         // Shrink the array if size = 1/4 of the capacity, and update size
-        if (--size == 1 / 4 * capacity && size > 1) {
-            resize(1 / 4 * capacity);
+        int quarter = (int) Math.round(0.25 * capacity);
+        if (--size == quarter && size > 1) {
+            resize(quarter);
         }
         return temp;
     }
@@ -174,5 +176,10 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
             }
         }
         return true;
+    }
+
+    /* TODO: Helper method, returns capacity, remove after test */
+    public int getCapacity() {
+        return capacity;
     }
 }

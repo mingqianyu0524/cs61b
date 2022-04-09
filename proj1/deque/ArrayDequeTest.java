@@ -208,4 +208,25 @@ public class ArrayDequeTest {
         boolean isEqual = ad.equals(lld);
         assertTrue(isEqual);
     }
+
+    @Test
+    /* Ensure that you resize down after removals */
+    public void resizeTest() {
+        int N = 64;
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+
+        // Insert N items
+        for (int i = 0; i < N; i++) {
+            int num = (int) Math.round(Math.random() * 100);
+            ad.addLast(num);
+        }
+
+        // Remove all but one
+        for (int i = 0; i < N - 1; i++) {
+            ad.removeLast();
+        }
+
+        int cap = ad.getCapacity();
+        assertEquals(2, cap); // There are some problems with the resize method
+    }
 }
