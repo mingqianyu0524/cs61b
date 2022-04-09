@@ -32,7 +32,7 @@ public class LinkedListDequeTest {
 
 		System.out.println("Printing out deque: ");
 		lld1.printDeque();
-		
+
     }
 
     @Test
@@ -50,7 +50,7 @@ public class LinkedListDequeTest {
 		lld1.removeFirst();
 		// should be empty
 		assertTrue("lld1 should be empty after removal", lld1.isEmpty());
-        
+
     }
 
     @Test
@@ -71,7 +71,7 @@ public class LinkedListDequeTest {
         errorMsg += "  actual size() returned 0\n";
 
         assertEquals(errorMsg, 0, size);
-        
+
     }
 
     @Test
@@ -89,7 +89,7 @@ public class LinkedListDequeTest {
         String s = lld1.removeFirst();
         double d = lld2.removeFirst();
         boolean b = lld3.removeFirst();
-        
+
     }
 
     @Test
@@ -121,5 +121,53 @@ public class LinkedListDequeTest {
         for (double i = 999999; i > 500000; i--) {
             assertEquals("Should have the same value", i, (double) lld1.removeLast(), 0.0);
         }
+    }
+
+    @Test
+    /* Test linked list deque iterator */
+    public void iteratorTest() {
+        LinkedListDeque<Integer> lld = new LinkedListDeque<Integer>();
+        for (int i = 0; i < 10000; i++) {
+            lld.addLast(i);
+        }
+        for (int ignored : lld) {
+            lld.removeLast();
+        }
+        assertEquals("Should have the same value", 5000, lld.size());
+    }
+
+    @Test
+    /* Test linked list deque equals */
+    public void notEqualTest() {
+
+        LinkedListDeque<Integer> deque1 = new LinkedListDeque<>();
+        deque1.addFirst(15);
+        deque1.addFirst(20);
+        deque1.addLast(10);
+
+        LinkedListDeque<Integer> deque2 = new LinkedListDeque<>();
+        deque1.addFirst(15);
+        deque1.addLast(20);
+        deque1.addLast(26);
+
+        boolean res = deque1.equals(deque2);
+        assertNotEquals("Should not be equal, ", res, true);
+    }
+
+    @Test
+    public void equalTest() {
+
+        LinkedListDeque<Integer> lld1 = new LinkedListDeque<>();
+        lld1.addFirst(15);
+        lld1.addLast(20);
+        lld1.addLast(10);
+
+        LinkedListDeque<Integer> lld2 = new LinkedListDeque<>();
+        lld2.addFirst(15);
+        lld2.addLast(20);
+        lld2.addLast(10);
+
+        boolean res = lld1.equals(lld2);
+        assertEquals("Should be equal, ", res, true);
     }
 }

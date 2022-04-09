@@ -1,6 +1,8 @@
 package deque;
 
-public class LinkedListDeque<T> {
+import java.util.Iterator;
+
+public class LinkedListDeque<T> implements Deque<T> {
     private Node sentinel;
     private int size;
 
@@ -38,17 +40,10 @@ public class LinkedListDeque<T> {
         size++;
     }
 
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
     public int size() {
         return size;
     }
 
-    /* Prints the items in the deque from first to last, separated by a space.
-     * Once all the items have been printed, print out a new line.
-     */
     public void printDeque() {
         Node ptr = sentinel;
         while (ptr.next != sentinel) {
@@ -58,9 +53,6 @@ public class LinkedListDeque<T> {
         System.out.print(ptr.item.toString() + "\n");
     }
 
-    /* Removes and returns the item at the front of the deque.
-     * If no such item exists, returns null.
-     */
     public T removeFirst() {
         Node oldFirst = sentinel.next;
         sentinel.next = sentinel.next.next;
@@ -77,41 +69,61 @@ public class LinkedListDeque<T> {
         return oldLast.item;
     }
 
-    /* Gets the item at the given index, where 0 is the front, 1 is the next item, and so forth.
-     * If no such item exists, returns null. Must not alter the deque!
-     * Use iterative, not recursive
-     */
     public T get(int index) {
         if (index > size) return null;
         Node ptr = sentinel;
-        for (int i = 0; i < index; ++i) {
+        for (int i = 0; i <= index; ++i) {
             ptr = ptr.next;
         }
         return ptr.item;
     }
 
-    /* public Iterator<T> iterator() {} */
+    /* Implementation: Return a new iterator */
+    public Iterator<T> iterator() {
+        return new LinkedListIterator();
+    }
+
+    public class LinkedListIterator implements Iterator<T> {
+        private int pos;
+
+        // Constructor
+        public LinkedListIterator() {
+            pos = 0;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return pos < size;
+        }
+
+        @Override
+        public T next() {
+            T returnItem = get(pos);
+            pos++;
+            return returnItem;
+        }
+    }
 
     @Override
-    // Need to watch the lectures first before implementing this method
-    public boolean equals(Object o) {
-        return (o instanceof LinkedListDeque);
+    // Compare if two linked list deque equals
+    public boolean equals(Object other) {
+        if (other == this ) return true;
+        if (other == null) return false;
+        if (other.getClass() != this.getClass()) return false;
+        // Cast to linked list deque
+        LinkedListDeque<T> o = (LinkedListDeque<T>) other;
+        // Check size
+        if (o.size() != this.size()) return false;
+        // Check if sequence of items are the same
+        for (int i = 0; i < this.size(); i++) {
+            T otherItem = o.get(i);
+            T item = this.get(i);
+            if (!(item.equals(otherItem))) return false;
+        }
+        return true;
     }
 
     public static void main(String[] args) {
-        LinkedListDeque<Integer> deque1 = new LinkedListDeque<>();
-        deque1.addFirst(15);
-        deque1.addFirst(20);
-        deque1.addLast(10);
-        LinkedListDeque<Integer> deque2 = new LinkedListDeque<>();
-        deque1.addFirst(10);
-        deque1.addFirst(15);
-        deque1.addLast(20);
-        deque1.addLast(25);
-        if (deque1.equals(deque2)) {
-            System.out.println("deque1 and deque2 are equal");
-        } else {
-            System.out.println("deque1 and deque2 are not equal");
-        }
+
     }
 }

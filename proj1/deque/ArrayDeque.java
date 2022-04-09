@@ -1,6 +1,8 @@
 package deque;
 
-public class ArrayDeque<T> {
+import java.util.Iterator;
+
+public class ArrayDeque<T> implements Deque<T> {
     private T[] items;
     private int first;
     private int last;
@@ -51,10 +53,6 @@ public class ArrayDeque<T> {
         if (++size == capacity) resize(capacity * 2);
     }
 
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
     public int size() {
         return size;
     }
@@ -95,5 +93,46 @@ public class ArrayDeque<T> {
     public T get(int index) {
         if (first + index < capacity) return items[first + index];
         return items[first + index - capacity];
+    }
+
+    /* Implement iterator */
+    public Iterator<T> iterator() {
+        return new ArrayDequeIterator();
+    }
+
+    public class ArrayDequeIterator implements Iterator {
+        int pos;
+
+        public ArrayDequeIterator() {
+            pos = 0;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return pos < size;
+        }
+
+        @Override
+        public Object next() {
+            T returnItem = get(pos);
+            pos++;
+            return returnItem;
+        }
+    }
+
+    @Override
+    /* Implement equals */
+    public boolean equals(Object other) {
+        if (other == this) return true;
+        if (other == null) return false;
+        if (other.getClass() != this.getClass()) return false;
+        ArrayDeque<T> o = (ArrayDeque<T>) other;
+        if (o.size() != this.size()) return false;
+        for (int i = 0; i < size; i++) {
+            T thisItem = this.get(i);
+            T otherItem = o.get(i);
+            if (!thisItem.equals(otherItem)) return false;
+        }
+        return true;
     }
 }

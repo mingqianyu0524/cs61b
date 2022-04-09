@@ -149,4 +149,48 @@ public class ArrayDequeTest {
         }
         assertEquals("Should have the same value", 9999, ad1.get(9999), 0.0);
     }
+
+    @Test
+    public void equalTest() {
+
+        ArrayDeque<Integer> ad1 = new ArrayDeque<>();
+        ad1.addFirst(15);
+        ad1.addLast(20);
+        ad1.addLast(10);
+
+        ArrayDeque<Integer> ad2 = new ArrayDeque<>();
+        ad2.addFirst(15);
+        ad2.addLast(20);
+        ad2.addLast(10);
+
+        boolean res = ad1.equals(ad2);
+        assertEquals("Should be equal, ", res, true);
+    }
+
+    @Test
+    public void notEqualTest() {
+
+        ArrayDeque<Integer> ad1 = new ArrayDeque<>();
+        ad1.addFirst(15);
+        ad1.addLast(20);
+        ad1.addLast(11);
+
+        ArrayDeque<Integer> ad2 = new ArrayDeque<>();
+        ad2.addFirst(15);
+        ad2.addLast(20);
+        ad2.addLast(10);
+
+        boolean res = ad1.equals(ad2);
+        assertNotEquals("Should not be equal, ", res, true);
+    }
+
+    @Test
+    public void iteratorTest() {
+        ArrayDeque<Integer> ad1 = new ArrayDeque<>();
+        for (int i = 0; i < 10000; i++) ad1.addLast(i);
+        for (int ignored : ad1) ad1.removeFirst();
+        for (int ignored : ad1) ad1.removeLast();
+
+        assertEquals("Should be equal ", 2500, ad1.size());
+    }
 }
