@@ -7,10 +7,10 @@ public class LinkedListDeque<T> implements Deque<T> {
     private Node curNode; // this is just for getRecursive
     private int size;
 
-    public class Node {
-        public Node prev;
-        public T item;
-        public Node next;
+    private class Node {
+        private Node prev;
+        private T item;
+        private Node next;
 
         public Node(Node p, T i, Node n) {
             prev = p;
@@ -59,7 +59,9 @@ public class LinkedListDeque<T> implements Deque<T> {
         Node oldFirst = sentinel.next;
         sentinel.next = sentinel.next.next;
         sentinel.next.next.prev = sentinel;
-        if (size > 0) size--;
+        if (size > 0) {
+            size--;
+        }
         return oldFirst.item;
     }
 
@@ -67,7 +69,9 @@ public class LinkedListDeque<T> implements Deque<T> {
         Node oldLast = sentinel.prev;
         sentinel.prev = sentinel.prev.prev;
         sentinel.prev.prev.next = sentinel;
-        if (size > 0) size--;
+        if (size > 0) {
+            size--;
+        }
         return oldLast.item;
     }
 
@@ -99,7 +103,7 @@ public class LinkedListDeque<T> implements Deque<T> {
         return new LinkedListIterator();
     }
 
-    public class LinkedListIterator implements Iterator<T> {
+    private class LinkedListIterator implements Iterator<T> {
         private int pos;
 
         // Constructor
@@ -123,18 +127,28 @@ public class LinkedListDeque<T> implements Deque<T> {
     @Override
     // Compare if two linked list deque equals
     public boolean equals(Object other) {
-        if (other == this ) return true;
-        if (other == null) return false;
-        if (other.getClass() != this.getClass()) return false;
+        if (other == this) {
+            return true;
+        }
+        if (other == null) {
+            return false;
+        }
+        if (other.getClass() != this.getClass()) {
+            return false;
+        }
         // Cast to linked list deque
         LinkedListDeque<T> o = (LinkedListDeque<T>) other;
         // Check size
-        if (o.size() != this.size()) return false;
+        if (o.size() != this.size()) {
+            return false;
+        }
         // Check if sequence of items are the same
         for (int i = 0; i < this.size(); i++) {
             T otherItem = o.get(i);
             T item = this.get(i);
-            if (!(item.equals(otherItem))) return false;
+            if (!(item.equals(otherItem))) {
+                return false;
+            }
         }
         return true;
     }

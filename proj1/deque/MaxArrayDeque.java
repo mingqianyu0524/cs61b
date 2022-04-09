@@ -14,9 +14,12 @@ public class MaxArrayDeque<T> extends ArrayDeque<T> {
      * If the MaxArrayDeque is empty, simply return null.
      * */
     public T max() {
-        if (this == null) return null;
+        if (this == null) {
+            return null;
+        }
         T curMax = this.get(0);
-        for (T curItem : this) {
+        for (int i = 0; i < this.size(); i++) {
+            T curItem = this.get(i);
             if (myComparator.compare(curItem, curMax) > 0) {
                 curMax = curItem;
             }
@@ -28,9 +31,12 @@ public class MaxArrayDeque<T> extends ArrayDeque<T> {
      * If the MaxArrayDeque is empty, simply return null.
      * */
     public T max(Comparator<T> c) {
-        if (this == null) return null;
+        if (this == null) {
+            return null;
+        }
         T curMax = this.get(0);
-        for (T curItem : this) {
+        for (int i = 0; i < this.size(); i++) {
+            T curItem = this.get(i);
             if (c.compare(curItem, curMax) > 0) {
                 curMax = curItem;
             }
