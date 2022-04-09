@@ -4,6 +4,7 @@ import java.util.Iterator;
 
 public class LinkedListDeque<T> implements Deque<T> {
     private Node sentinel;
+    private Node curNode; // this is just for getRecursive
     private int size;
 
     public class Node {
@@ -24,6 +25,7 @@ public class LinkedListDeque<T> implements Deque<T> {
         sentinel.prev = sentinel;
         sentinel.next = sentinel;
         size = 0;
+        curNode = sentinel; // initialize curNode to sentinel
     }
 
     public void addFirst(T item) {
@@ -78,6 +80,20 @@ public class LinkedListDeque<T> implements Deque<T> {
         return ptr.item;
     }
 
+    /* Same as get, but uses recursion */
+    public T getRecursive(int index) {
+        if (index > size) return null;
+        curNode = curNode.next; // Move curNode to the next pos
+        if (index == 0) {
+            T item = curNode.item;
+            curNode = curNode.prev; // Retrieve curNode back
+            return item;
+        }
+        T item = getRecursive(index - 1);
+        curNode = curNode.prev;
+        return item;
+    }
+
     /* Implementation: Return a new iterator */
     public Iterator<T> iterator() {
         return new LinkedListIterator();
@@ -123,7 +139,4 @@ public class LinkedListDeque<T> implements Deque<T> {
         return true;
     }
 
-    public static void main(String[] args) {
-
-    }
 }

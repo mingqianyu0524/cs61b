@@ -170,4 +170,21 @@ public class LinkedListDequeTest {
         boolean res = lld1.equals(lld2);
         assertEquals("Should be equal, ", res, true);
     }
+
+    @Test
+    /* Test getRecursive */
+    public void getRecursiveTest() {
+        LinkedListDeque<Integer> lld = new LinkedListDeque<>();
+
+        for (int i = 0; i < 1000; i++) {
+            lld.addLast(i);
+        }
+
+        for (int i = 0; i < lld.size(); i++) {
+            int val = (int) lld.getRecursive(i);
+            assertEquals(i, val);
+        }
+
+        System.out.println("Check curNode position");
+    }
 }

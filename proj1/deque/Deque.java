@@ -34,4 +34,5 @@ public interface Deque<T> extends Iterable<T> {
      * Use iterative, not recursive
      */
     public T get(int index);
+
 }

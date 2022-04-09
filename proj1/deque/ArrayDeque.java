@@ -100,7 +100,7 @@ public class ArrayDeque<T> implements Deque<T> {
         return new ArrayDequeIterator();
     }
 
-    public class ArrayDequeIterator implements Iterator {
+    private class ArrayDequeIterator implements Iterator {
         int pos;
 
         public ArrayDequeIterator() {
