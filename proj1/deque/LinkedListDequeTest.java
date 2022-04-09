@@ -1,6 +1,9 @@
 package deque;
 
 import org.junit.Test;
+
+import java.util.ArrayList;
+
 import static org.junit.Assert.*;
 
 
@@ -187,4 +190,75 @@ public class LinkedListDequeTest {
 
         System.out.println("Check curNode position");
     }
+
+    @Test
+    /* Random addLast removeFirst test */
+    public void AGAddRemoveTest1() {
+
+        LinkedListDeque<Integer> lld = new LinkedListDeque<>();
+        ArrayList<Integer> aList = new ArrayList<>();
+
+        /* Generate random float point numbers between 0 and 1 */
+        for (int i = 0; i < 1000; i++) {
+            int num = (int) Math.round(100 * Math.random());
+            aList.add(num);
+        }
+
+        /* Add numbers to linkedListDeque */
+        for (int j = 0; j < aList.size(); j++) {
+            lld.addLast(aList.get(j));
+        }
+
+        /* Check if all numbers are equal */
+        assertEquals(lld.size(), aList.size());
+        for (int k = 0; k < lld.size(); k++) {
+            assertEquals(lld.get(k), aList.get(k));
+        }
+
+        /* Remove all numbers from the back of queue */
+        for (int l = 0; l < aList.size(); l++) {
+            int lldItem = lld.removeLast();
+            assert lldItem == aList.get(aList.size() - l - 1);
+        }
+
+        /* Check size of linkedListDeque */
+        int lldSize = lld.size();
+        assertEquals(0, lldSize);
+    }
+
+    @Test
+    /* Random addFirst removeLast test */
+    public void AGAddRemoveTest2() {
+
+        LinkedListDeque<Integer> lld = new LinkedListDeque<>();
+        ArrayList<Integer> aList = new ArrayList<>();
+
+        /* Generate random float point numbers between 0 and 1 */
+        for (int i = 0; i < 1000; i++) {
+            int num = (int) Math.round(100 * Math.random());
+            aList.add(num);
+        }
+
+        /* Add numbers to linkedListDeque */
+        for (int j = 0; j < aList.size(); j++) {
+            lld.addFirst(aList.get(j));
+        }
+
+        /* Check if all numbers are equal */
+        assertEquals(lld.size(), aList.size());
+        for (int k = 0; k < lld.size(); k++) {
+            assertEquals(lld.get(k), aList.get(aList.size() - k - 1));
+        }
+
+        /* Remove all numbers from the back of queue */
+        for (int l = 0; l < aList.size(); l++) {
+            int lldItem = lld.removeLast();
+            assert lldItem == aList.get(l);
+        }
+
+        /* Check size of linkedListDeque */
+        int lldSize = lld.size();
+        assertEquals(0, lldSize);
+    }
+
 }
