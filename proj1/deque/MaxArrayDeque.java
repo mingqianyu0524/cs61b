@@ -1,7 +1,6 @@
 package deque;
 
 import java.util.Comparator;
-import java.util.Iterator;
 
 public class MaxArrayDeque<T> extends ArrayDeque<T> {
     private Comparator<T> myComparator;
@@ -42,30 +41,5 @@ public class MaxArrayDeque<T> extends ArrayDeque<T> {
             }
         }
         return curMax;
-    }
-
-    public Iterator<T> iterator() {
-        return new MaxArrayDequeIterator();
-    }
-
-    /* MaxArrayDeque iterator object */
-    private class MaxArrayDequeIterator implements Iterator<T> {
-        int pos;
-
-        public MaxArrayDequeIterator() {
-            pos = 0;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return pos < size();
-        }
-
-        @Override
-        public T next() {
-            T returnItem = get(pos);
-            pos++;
-            return returnItem;
-        }
     }
 }
