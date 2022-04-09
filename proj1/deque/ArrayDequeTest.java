@@ -2,6 +2,8 @@ package deque;
 
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 import static org.junit.Assert.*;
 
 public class ArrayDequeTest {
@@ -225,8 +227,96 @@ public class ArrayDequeTest {
         for (int i = 0; i < N - 1; i++) {
             ad.removeLast();
         }
+    }
 
-        int cap = ad.getCapacity();
-        assertEquals(2, cap); // There are some problems with the resize method
+    @Test
+    /* Random addLast removeLast test */
+    public void AGAddRemoveTest1() {
+
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+        ArrayList<Integer> aList = new ArrayList<>();
+
+        /* Generate random float point numbers between 0 and 1 */
+        for (int i = 0; i < 5000; i++) {
+            int num = (int) Math.round(100 * Math.random());
+            aList.add(num);
+        }
+
+        /* Add numbers to array deque */
+        for (Integer integer : aList) {
+            ad.addLast(integer);
+        }
+
+        /* Check if all numbers are equal */
+        assertEquals(ad.size(), aList.size());
+        for (int k = 0; k < ad.size(); k++) {
+            assertEquals(ad.get(k), aList.get(k));
+        }
+
+        /* Remove all numbers from the back of array deque */
+        for (int l = 0; l < aList.size(); l++) {
+            int lldItem = ad.removeLast();
+            assert lldItem == aList.get(aList.size() - l - 1);
+        }
+
+        /* Check size of linkedListDeque */
+        int lldSize = ad.size();
+        assertEquals(0, lldSize);
+    }
+
+    @Test
+    public void AGTestD006() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+
+        ad.addLast(0);
+        ad.addFirst(1);
+        ad.isEmpty();
+        ad.addFirst(3);
+        ad.addLast(4);
+        ad.removeLast();
+        ad.removeFirst();
+        ad.addFirst(7);
+
+        int ans = ad.removeLast();
+        assert ans == 0;
+    }
+
+    @Test
+    public void AGTestD005() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+
+        ad.addLast(0);
+        ad.addLast(1);
+        ad.addLast(2);
+        ad.removeFirst();
+        ad.addLast(4);
+        ad.addLast(5);
+        ad.addLast(6);
+        ad.addLast(7);
+        ad.addLast(8);
+        ad.addLast(9);
+
+        int ans = ad.removeFirst();
+        assert ans == 1;
+    }
+
+    @Test
+    public void AGTestD011() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+
+        ad.addLast(0);
+        ad.addFirst(1);
+        ad.addFirst(2);
+        ad.addFirst(3);
+        ad.addLast(4);
+        ad.removeLast();
+        ad.removeLast();
+        ad.removeLast();
+        ad.addLast(8);
+        ad.addLast(9);
+
+        int ans = ad.removeFirst();
+
+        assert ans == 3;
     }
 }
