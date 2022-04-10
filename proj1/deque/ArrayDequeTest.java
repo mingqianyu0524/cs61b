@@ -321,4 +321,48 @@ public class ArrayDequeTest {
         ans = ad.get(2);
         assert ans == 0;
     }
+
+    @Test
+    public void testRandomGet() {
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+
+        ad.addLast(0);
+        ad.addLast(1);
+        ad.addFirst(2);
+        int ans = ad.removeLast();
+        assert ans == 1;
+        ans = ad.removeFirst();
+        assert ans == 2;
+        ad.addLast(5);
+        ans = ad.removeLast();
+        assert ans == 5;
+
+        ans = ad.removeLast();
+        assert ans == 0;
+        ad.addLast(8);
+        ans = ad.removeFirst();
+        assert ans == 8;
+        ad.addFirst(10);
+        ad.addLast(11);
+        ad.addFirst(12);
+
+        ans = ad.removeFirst();
+        assert ans == 12;
+        ad.addFirst(14);
+        ans = ad.get(2);
+        assert ans == 11;
+        ad.addLast(16);
+        ans = ad.removeLast();
+        assert ans == 16;
+        ans = ad.get(0);
+        assert ans == 14;
+        ans = ad.removeLast();
+        assert ans == 11;
+        ad.addLast(20);
+        ad.addFirst(21);
+        ans = ad.removeFirst();
+        assert ans == 21;
+        ans = ad.removeLast();
+        assert ans == 20;
+    }
 }

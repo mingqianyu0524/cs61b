@@ -32,7 +32,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
                     a[j++] = items[i];
                 }
             }
-            last = newCapacity - 1;
+            last = size - 1;
         }
         capacity = newCapacity;
         first = 0;
@@ -42,11 +42,6 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
     public void addFirst(T item) {
         // Update first
         if (--first < 0) {
-            if (size == capacity) {
-                first++;
-                resize(capacity * 2);
-                first--;
-            }
             first += capacity;
         }
         // Add item to items[first]
@@ -59,11 +54,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
 
     public void addLast(T item) {
         if (++last >= capacity) {
-            if (size == capacity) {
-                resize(capacity * 2);
-            } else {
-                last -= capacity;
-            }
+            last -= capacity;
         }
         // Add item to the last index
         items[last] = item;
@@ -101,7 +92,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         }
         // Shrink the array if size = 1/4 of the capacity, and update size
         int quarter = (int) Math.round(0.25 * capacity);
-        if (--size == quarter && size > 1) {
+        if (--size < quarter && size > 1) {
             resize(quarter);
         }
         return temp;
@@ -120,7 +111,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         }
         // Shrink the array if size = 1/4 of the capacity, and update size
         int quarter = (int) Math.round(0.25 * capacity);
-        if (--size == quarter && size > 1) {
+        if (--size < quarter && size > 1) {
             resize(quarter);
         }
         return temp;
