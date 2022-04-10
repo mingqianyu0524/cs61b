@@ -365,4 +365,59 @@ public class ArrayDequeTest {
         ans = ad.removeLast();
         assert ans == 20;
     }
+
+    /* TODO simulate random test */
+    /* Goal: make 500 random calls to addFirst removeLast and isEmpty */
+    @Test
+    public void simulateRandomTest() {
+        // Step 1: create a matrix of probability
+        double m[] = {0.5, 0.4, 0.1};
+        int a[] = randomSimulator(m);
+
+        ArrayDeque<Integer> ad = new ArrayDeque<>();
+
+        // Step 2: call functions accordingly
+        for (int i = 0; i < 20; i++) {
+            int randomIndex = (int) Math.round(Math.random() * 10); // TODO fix array index out of bound error
+            int funcIndex = (int) a[randomIndex];
+
+            if (funcIndex == 0) {
+                // call addFirst
+                int numToInsert = (int) Math.round(Math.random() * 100);
+                ad.addFirst(numToInsert);
+                System.out.println("Inserted " + numToInsert + " into the deque");
+            } else if (funcIndex == 1) {
+                // call removeLast
+                if (ad.isEmpty()) {
+                    continue;
+                }
+                int numRemoved = ad.removeLast();
+                System.out.println("Removed " + numRemoved + " from the deque");
+            } else {
+                // call isEmpty
+                ad.isEmpty();
+                System.out.println("isEmpty? ");
+            }
+        }
+    }
+
+    private int[] randomSimulator(double m[]) {
+        int[] a = new int[10];
+        // Make sure the sum of m is 1
+        double sum = 0;
+        for (int i = 0; i < m.length; i++) {
+            sum += m[i];
+        }
+        assert (int) Math.round(sum) == 1;
+        // insert 0, 1, 2 into the array by probability distribution
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < m.length; j++) {
+                int numIns = (int) Math.round(10 * m[j]);
+                for (int k = 0; k < numIns; k++) {
+                    a[i++] = j;
+                }
+            }
+        }
+        return a;
+    }
 }
