@@ -29,7 +29,7 @@ public class TreeNode<T> implements Iterable<TreeNode<T>> {
         childNode.parent = this;
         this.children.add(childNode);
         return childNode;
-    }
+    }// case1: current node has no children, the next is the next child in the parent node's iterator
 
     @Override
     public Iterator<TreeNode<T>> iterator() {
