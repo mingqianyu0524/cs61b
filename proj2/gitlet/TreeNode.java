@@ -29,7 +29,34 @@ public class TreeNode<T> implements Iterable<TreeNode<T>> {
         childNode.parent = this;
         this.children.add(childNode);
         return childNode;
-    }// case1: current node has no children, the next is the next child in the parent node's iterator
+    }
+
+    public void removeNode(T data, Comparable<T> cmp) {
+        TreeNode<T> node = new TreeNode<T>(data);
+        TreeNode target = findTreeNode(cmp);
+        if (target != null) {
+            if (target.parent != null) {
+                target.parent.children.remove(target);
+            }
+        } else {
+            System.out.println("node not exist");
+        }
+    }
+
+    /**
+     * Find tree node given a customized comparable
+     * @param cmp
+     * @return
+     */
+    public TreeNode<T> findTreeNode(Comparable<T> cmp) {
+        for (TreeNode<T> node : this) {
+            T elData = node.data;
+            if (cmp.compareTo(elData) == 0) {
+                return node;
+            }
+        }
+        return null;
+    }
 
     @Override
     public Iterator<TreeNode<T>> iterator() {

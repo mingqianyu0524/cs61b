@@ -1,12 +1,12 @@
 package gitlet;
 import org.junit.Test;
 
+import java.util.Comparator;
 import java.util.List;
 
 import static gitlet.Constants.*;
 import static gitlet.Utils.plainFilenamesIn;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 
 public class UnitTests {
@@ -62,5 +62,12 @@ public class UnitTests {
             if (treeNode.data == 7) found = true;
         }
         assertTrue(found);
+
+        found = false;
+        for (TreeNode<Integer> treeNode : tree) {
+            if (treeNode.data == 8) found = true;
+        }
+        assertFalse(found);
     }
+
 }

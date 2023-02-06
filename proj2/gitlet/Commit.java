@@ -31,11 +31,14 @@ public class Commit implements Serializable {
     /** The timestamp of this Commit. */
     private String timestamp;
     /**
-     * Snapshot of the current working directory at the time of this commit
+     * Tree of the current working directory at the time of this commit
+     * Under the assumption that the depth of the tree is 1, it's reasonable to use a map data structure
+     * to represent the tree.
+     *
      * Key = file name SHA1
      * Value = file blob SHA1
      */
-    private final Map<String, String> snapshot;
+    private final Map<String, String> tree;
     /**
      * Parent commit SHA1
      */
@@ -47,14 +50,14 @@ public class Commit implements Serializable {
     public Commit() {
         this.message = INITIAL_COMMIT_MSG;
         setTimestamp(true);
-        this.snapshot = null;
+        this.tree = null;
         this.parent = null;
     }
 
-    public Commit(String message, Map<String, String> snapshot, String parent) {
+    public Commit(String message, Map<String, String> tree, String parent) {
         this.message = message;
         setTimestamp(false);
-        this.snapshot = snapshot;
+        this.tree = tree;
         this.parent = parent;
     }
 
