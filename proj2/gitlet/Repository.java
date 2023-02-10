@@ -1,29 +1,48 @@
 package gitlet;
 
 import java.io.File;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 import static gitlet.Constants.*;
 import static gitlet.Utils.*;
 
 /** Represents a gitlet repository.
- *  TODO: It's a good idea to give a description here of what else this Class
- *  does at a high level.
  *
  *  @author Mingqian Yu
  */
-public class Repository {
+public class Repository implements Serializable {
     /**
-     * TODO: add instance variables here.
-     *
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
      * variable is used. We've provided two examples for you.
      */
 
-    /* TODO: fill in the rest of this class. */
+    /* Fields */
+
+    Staging staging; // Staging area
+
+    String currentBranch = "master"; // Name of the current branch
+
+    Commit head; // Pointer to the HEAD commit of the current branch
+
+
+    /* Constructor */
+
+    public Repository() {
+        // If the repository doesn't exist under .gitlet/ create an empty repository
+        // Otherwise load the repository
+        File file = Utils.join(GITLET_DIR, "Repository");
+        if (file.exists()) {
+            Repository repo = load();
+            this.staging = repo.staging;
+            this.currentBranch = repo.currentBranch;
+            this.head = repo.head;
+        }
+    }
 
     /**
      * Creates a new Gitlet version-control system in the current directory.
@@ -46,25 +65,52 @@ public class Repository {
             throw error(GITLET_EXISTS_ERR);
         }
 
-        // TODO Create the master branch and maybe the HEAD pointer too?
-
         // Initialize file directories for GitLet repository
         GITLET_DIR.mkdir();
         COMMITS_DIR.mkdir();
-        STAGING_DIR.mkdir();
         BRANCHES_DIR.mkdir();
         BLOBS_DIR.mkdir();
-        // Create the initial commit and store it in the file system
-        new Commit().save();
+
+        // Initialize the staging area of this repository
+        this.staging = new Staging();
+
+        // Create the initial commit and store it in the commits folder
+        Commit commit = new Commit();
+        commit.save();
+
+        // Create the master branch and the HEAD pointer
+        this.head = commit;
+        Branch.save(Utils.join(BRANCHES_DIR, currentBranch), new Branch("master", head));
+        this.currentBranch = "master";
+
+        // Save this repository object under .gitlet/
+        this.save();
     }
 
     /**
-     * Adds a copy of the file as it currently exists to the staging area (see the description of the commit command).
+     *
+     * Lazy loading and caching: Let’s say you store the state of which files have been gitlet added to your repo
+     * in your file system.
+     *
+     * Lazy loading: The first time you want that list of files when you run your Java program, you need to load
+     * it from disk.
+     *
+     * Caching: The second time you need that list of files in the same run of the Java program,
+     * don’t load it from disk again, but use the same list as you loaded before. If you need to,
+     * you can then add multiple files to that list object in your Java program.
+     *
+     * Writing back: When your Java program is finished, at the very end, since you had loaded that list of files and
+     * may have modified it, write it back to your file system.
+     *
+     * Adds a copy of the file as it currently exists to the staging area.
+     *
      * For this reason, adding a file is also called staging the file for addition.
      *
      * Staging an already-staged file overwrites the previous entry in the staging area with the new contents.
-     * The staging area should be somewhere in .gitlet. If the current working version of the file is identical to
-     * the version in the current commit, do not stage it to be added, and remove it from the staging area if it is
+     * The staging area should be somewhere in .gitlet.
+     *
+     * If the current working version of the file is identical to the version in the current commit,
+     * do not stage it to be added, and remove it from the staging area if it is
      * already there (as can happen when a file is changed, added, and then changed back to it’s original version).
      *
      * The file will no longer be staged for removal (see gitlet rm), if it was at the time of the command.
@@ -72,15 +118,125 @@ public class Repository {
      * @param filename Name of the file to be added to the staging area
      */
     public void add(String filename) {
-        // TODO create 'index' file under .gitlet/ for staging area persistence when 'add' is called
 
+        File file = join(CWD, filename);
+        String contents = Utils.readContentsAsString(file);
+
+        // store the blob (do NOT use the file name but sha1 hash of the content to avoid duplicates)
+        File blob = join(BLOBS_DIR, Utils.sha1(contents));
+        Utils.writeContents(blob, contents);
+
+        // Compare the file to the one in the current head commit
+        Commit head = this.head;
+        String headBlobName = head.getBlob(filename);
+        if (headBlobName != null) {
+            String headBlobContent = Utils.readContentsAsString(join(BLOBS_DIR, headBlobName));
+            // Compare blob with headBlob, if they are equal, then do not add the file to the staging area
+            // and remove it from untracked files if it's there.
+            if (contents.equals(headBlobContent)) {
+                staging.getStagedForRemoval().remove(filename);
+                return;
+            }
+        }
+
+        // Otherwise, add the file to the staging area and save
+        staging.getStagedForAddition().put(filename, Utils.sha1(contents));
     }
 
-    public void commit() {
+    /**
+     * Saves a snapshot of tracked files in the current commit and staging area, so they can be restored at a later time,
+     * creating a new commit. The commit is said to be tracking the saved files.
+     * By default, each commit’s snapshot of files will be exactly the same as its parent commit’s snapshot of files;
+     * it will keep versions of files exactly as they are, and not update them.
+     *
+     * A commit will only update the contents of files it is tracking that have been staged for addition at the time
+     * of commit, in which case the commit will now include the version of the file that was staged instead of the
+     * version it got from its parent. A commit will save and start tracking any files that were staged for addition
+     * but weren’t tracked by its parent.
+     *
+     * Finally, files tracked in the current commit may be untracked in the new commit as a result being staged
+     * for removal by the rm command (below).
+     *
+     * The bottom line: By default a commit has the same file contents as its parent.
+     * Files staged for addition and removal are the updates to the commit.
+     * Of course, the date (and likely the message) will also different from the parent.
+     *
+     * Some additional points about commit:
+     *
+     * The staging area is cleared after a commit.
+     *
+     * The commit command never adds, changes, or removes files in the working directory
+     * (other than those in the .gitlet directory). The rm command will remove such files,
+     * as well as staging them for removal, so that they will be untracked after a commit.
+     *
+     * Any changes made to files after staging for addition or removal are ignored by the commit command,
+     * which only modifies the contents of the .gitlet directory. For example, if you remove a tracked file
+     * using the Unix rm command (rather than Gitlet’s command of the same name), it has no effect on the next commit,
+     * which will still contain the (now deleted) version of the file.
+     *
+     * After the commit command, the new commit is added as a new node in the commit tree.
+     *
+     * The commit just made becomes the “current commit”, and the head pointer now points to it.
+     * The previous head commit is this commit’s parent commit.
+     *
+     * Each commit should contain the date and time it was made.
+     *
+     * Each commit has a log message associated with it that describes the changes to the files in the commit.
+     * This is specified by the user. The entire message should take up only one entry in the array args that is
+     * passed to main. To include multiword messages, you’ll have to surround them in quotes.
+     *
+     * Each commit is identified by its SHA-1 id, which must include the file (blob) references of its files,
+     * parent reference, log message, and commit time.
+     *
+     * @param message
+     */
+    public void commit(String message) {
         // Read from the file system the HEAD commit object and the staging area
-        // Clone the HEAD commit
-        // Modify its message and timestamp according to user input
+        Commit head = this.head;
+
+        // Clone the HEAD commit, modify its message and timestamp according to user input
+        // Most importantly, set the parent of this new commit to the original HEAD commit
+        Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)));
+
         // Use the staging area in order to modify the files tracked by the new commit
+        for (String filename : staging.getStagedForAddition().keySet()) {
+            // For files in staging area, if the file is in commit tree, update it
+            // Otherwise, simply add the file into the commit tree
+            Map<String, String> tree = commit.getTree();
+            if (tree.containsKey(filename)) {
+                String blob = this.head.getBlob(Utils.sha1(filename));
+                tree.put(filename, blob);
+            } else {
+                File file = Utils.join(CWD, filename);
+                tree.put(filename, Utils.sha1(Utils.readContentsAsString(file)));
+            }
+        }
+
+        // Update the HEAD + branch pointer to the new commit
+        this.head = commit;
+
+        File branchFile = Utils.join(BRANCHES_DIR, currentBranch);
+        Branch branch = Branch.load(branchFile);
+        branch.setHead(commit);
+        Branch.save(branchFile, branch);
+
         // Store any new or modified commit object into the file system and clean up the staging area
+        commit.save();
+        staging.getStagedForAddition().clear();
+        this.save();
     }
+
+    public void save() {
+        Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), this);
+    }
+
+    /**
+     * Load the Repository object from .gitlet/ folder
+     * TODO: move this method to main?
+     * @return
+     */
+    public static Repository load() {
+        return Utils.readObject(Utils.join(GITLET_DIR, "Repository"), Repository.class);
+    }
+
 }

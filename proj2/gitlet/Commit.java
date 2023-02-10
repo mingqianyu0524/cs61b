@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import static gitlet.Utils.*;
 import static gitlet.Constants.*;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -50,7 +51,7 @@ public class Commit implements Serializable {
     public Commit() {
         this.message = INITIAL_COMMIT_MSG;
         setTimestamp(true);
-        this.tree = null;
+        this.tree = new HashMap<>();
         this.parent = null;
     }
 
@@ -96,4 +97,19 @@ public class Commit implements Serializable {
     public String getParent() {
         return this.parent;
     }
+
+    /**
+     * Get the file blob by looking up the file name in the commit tree
+     *
+     * @return SHA1 hash of the file blob
+     */
+    public String getBlob(String filename) {
+        return this.tree.get(sha1(filename));
+    }
+
+    public Map<String, String> getTree() {
+        return tree;
+    }
+
+
 }
