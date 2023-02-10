@@ -2,7 +2,11 @@ package gitlet;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 
 import static gitlet.Constants.*;
@@ -12,11 +16,15 @@ import static org.junit.Assert.*;
 
 public class UnitTests {
 
-    // Initial commit SHA1 hash, may change if the Commit class gets modified
+    // Initial commit SHA1 hash, remember to update if the Commit class gets modified
     public static final String INITIAL_COMMIT = "b3a82f44130594618a373770e45b91e9bfbc3472";
     // Unix epoch time in designated datetime format
     public static final String UNIX_EPOCH = "00:00:00 UTC, Thu, Jan 01 1970";
 
+    /**
+     * Helper function to init the repository, serves as a test case as well
+     */
+    @Test
     public void init() {
         // Create a GitLet Repository
         Repository repo = new Repository();
@@ -71,30 +79,17 @@ public class UnitTests {
     }
 
     @Test
-    public void testWriteContents() {
-        File input = new File("input.txt");
-        byte[] inputContents = Utils.readContents(input);
-        File output = new File("output.txt");
-        Utils.writeContents(output, inputContents);
-
-        byte[] outputContents = Utils.readContents(output);
-        for (int i = 0; i < inputContents.length; i++) {
-            assertEquals(inputContents[i], outputContents[i]);
-        }
-
-    }
-
-    @Test
     public void testAdd() {
+        ifExistsThenDelete();
         init();
 
-        // Definition here
-        String filename = "input.txt";
-        String firstContent = "created";
-        String secondContent = "edited";
-        Utils.writeContents(new File(filename), firstContent);
+        // Define constants here
+        final String filename = "input.txt";
+        final String firstContent = "created";
+        final String secondContent = "edited";
 
         // Add the input.txt file with "test" content to the staging area
+        Utils.writeContents(new File(filename), firstContent);
         Repository repo = new Repository();
         repo.add(filename);
         String blobName = repo.staging.getStagedForAddition().get(filename);
@@ -115,29 +110,32 @@ public class UnitTests {
 
         // clean up
         deleteDirectory(Utils.join(CWD, ".gitlet"));
+        deleteFiles(filename);
     }
 
     @Test
+    // TODO: Consider corner cases that could potentially break the commit function (still limited to 1 branch)
     public void testCommit() {
+        ifExistsThenDelete();
         init();
 
-        // Definition here
-        String firstFilename = "firstFile.txt";
-        String secondFilename = "secondFile.txt";
-        String msg1 = "create first file";
-        String msg2 = "add second file and modified first file";
-        Utils.writeContents(new File(firstFilename), "created");
+        // Define constants here
+        final String firstFilename = "firstFile.txt";
+        final String secondFilename = "secondFile.txt";
+        final String msg1 = "create first file";
+        final String msg2 = "add second file and modified first file";
 
         // add a new file in the home directory and commit (commit id 1)
+        Utils.writeContents(new File(firstFilename), "created");
         Repository repo = new Repository();
         repo.add(firstFilename);
+        repo.dump(); // expect print first file in staging area
         Staging staging = repo.staging;
         assertTrue(staging.getStagedForAddition().containsKey(firstFilename));
 
         repo.commit(msg1);
-
-        File f = Utils.join(BRANCHES_DIR, repo.currentBranch);
-        String commitID1 = getCommitID(f);
+        repo.dump(); // expect print empty staging area
+        String commitID1 = getCommitID(repo.currentBranch);
 
         // add a second new file, also modify the file in the last commit, then commit (commit id 2)
         File f1 = Utils.join(CWD, firstFilename);
@@ -145,10 +143,12 @@ public class UnitTests {
         writeContents(f1, "edited");
         writeContents(f2, "random contents");
         repo.add(secondFilename);
+        repo.dump(); // expect print second file in staging area
         assertTrue(staging.getStagedForAddition().containsKey(secondFilename));
 
         repo.commit(msg2);
-        String commitID2 = getCommitID(f);
+        String commitID2 = getCommitID(repo.currentBranch);
+        repo.dump(); // expect print empty staging area
 
         // get the latest commit pointed by HEAD and verify its id == commit id 2
         assertEquals(Utils.sha1((Object) serialize(repo.head)), commitID2);
@@ -162,6 +162,13 @@ public class UnitTests {
         assertEquals(commit2.getMessage(), msg2);
         // clean up
         deleteDirectory(Utils.join(CWD, ".gitlet"));
+        deleteFiles(firstFilename, secondFilename);
+    }
+
+    private void deleteFiles(String... filenames) {
+        for (String filename : filenames) {
+            Utils.join(CWD, filename).delete();
+        }
     }
 
     /**
@@ -169,7 +176,7 @@ public class UnitTests {
      * @param directoryToBeDeleted
      * @return
      */
-    boolean deleteDirectory(File directoryToBeDeleted) {
+    private boolean deleteDirectory(File directoryToBeDeleted) {
         File[] allContents = directoryToBeDeleted.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
@@ -179,13 +186,33 @@ public class UnitTests {
         return directoryToBeDeleted.delete();
     }
 
+    private boolean ifExistsThenDelete() {
+        Path path = Paths.get(".gitlet");
+        if (Files.exists(path)) {
+            return deleteDirectory(Utils.join(CWD, ".gitlet"));
+        }
+        return true;
+    }
+
+    /**
+     * Helper function to get commit object from commit ID
+     * @param commitID
+     * @return Commit object given by the UID
+     */
     private Commit getCommitFromID (String commitID) {
         File file = Utils.join(COMMITS_DIR, commitID);
         return Utils.readObject(file, Commit.class);
     }
 
-    private String getCommitID(File f) {
+    /**
+     * Helper to get commit ID from the current branch file
+     * @param currentBranch: current branch name
+     * @return commitID
+     */
+    private String getCommitID(String currentBranch) {
+        File f = Utils.join(BRANCHES_DIR, currentBranch);
         Branch branch = Branch.load(f);
+        // branch.dump(); // for debug use
         Commit branchHEAD = branch.getHead();
         return Utils.sha1((Object) serialize(branchHEAD));
     }

@@ -15,7 +15,7 @@ import static gitlet.Constants.BRANCHES_DIR;
  * Before you ever call branch, your code should be running with a default branch called “master”.
  *
  */
-public class Branch implements Serializable {
+public class Branch implements Serializable, Dumpable {
 
     /* Name of the branch */
     private String name;
@@ -72,5 +72,15 @@ public class Branch implements Serializable {
 
     public Commit getHead() {
         return head;
+    }
+
+    @Override
+    public void dump() {
+        System.out.println("=============Dumping Branch=============");
+        System.out.printf("branch name: %s%n", name);
+        System.out.printf("commit id: %s%n", Utils.sha1((Object) Utils.serialize(head)));
+        System.out.printf("commit msg: %s%n", head.getMessage());
+        System.out.printf("commit timestamp: %s%n", head.getTimeStamp());
+        System.out.printf("commit parent: %s%n", head.getParent());
     }
 }

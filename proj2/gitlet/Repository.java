@@ -14,7 +14,7 @@ import static gitlet.Utils.*;
  *
  *  @author Mingqian Yu
  */
-public class Repository implements Serializable {
+public class Repository implements Serializable, Dumpable {
     /**
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
@@ -65,20 +65,15 @@ public class Repository implements Serializable {
             throw error(GITLET_EXISTS_ERR);
         }
 
-        // Initialize file directories for GitLet repository
-        GITLET_DIR.mkdir();
-        COMMITS_DIR.mkdir();
-        BRANCHES_DIR.mkdir();
-        BLOBS_DIR.mkdir();
-
-        // Initialize the staging area of this repository
+        // Initialize file directories for GitLet repository and set staging area
+        Repository.createDirectories();
         this.staging = new Staging();
 
         // Create the initial commit and store it in the commits folder
         Commit commit = new Commit();
         commit.save();
 
-        // Create the master branch and the HEAD pointer
+        // Create the master branch and assign the HEAD pointer
         this.head = commit;
         Branch.save(Utils.join(BRANCHES_DIR, currentBranch), new Branch("master", head));
         this.currentBranch = "master";
@@ -239,4 +234,27 @@ public class Repository implements Serializable {
         return Utils.readObject(Utils.join(GITLET_DIR, "Repository"), Repository.class);
     }
 
+    /**
+     * Create directories for initial repository
+     */
+    private static void createDirectories() {
+        GITLET_DIR.mkdir();
+        COMMITS_DIR.mkdir();
+        BRANCHES_DIR.mkdir();
+        BLOBS_DIR.mkdir();
+    }
+
+    @Override
+    public void dump() {
+        System.out.println("=============Dumping Repository=============");
+        System.out.printf("current branch name: %s%n", currentBranch);
+        System.out.printf("commit id: %s%n", Utils.sha1((Object) Utils.serialize(head)));
+        System.out.printf("commit msg: %s%n", head.getMessage());
+        System.out.printf("commit timestamp: %s%n", head.getTimeStamp());
+        System.out.printf("commit parent: %s%n", head.getParent());
+        System.out.println("staged for addition");
+        for (Map.Entry<String, String> entry : staging.getStagedForAddition().entrySet()) {
+            System.out.printf("key: %s, value: %s%n", entry.getKey(), entry.getValue());
+        }
+    }
 }
