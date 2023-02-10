@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Set;
 
 import static gitlet.Constants.*;
 import static gitlet.Utils.*;
@@ -115,6 +116,10 @@ public class Repository implements Serializable, Dumpable {
     public void add(String filename) {
 
         File file = join(CWD, filename);
+        // The initial version of gitlet only allows adding plain file, maybe in later version it will support dir too
+        if (!file.isFile()) {
+            throw error(FILE_NOT_EXIST_ERR);
+        }
         String contents = Utils.readContentsAsString(file);
 
         // store the blob (do NOT use the file name but sha1 hash of the content to avoid duplicates)
@@ -186,6 +191,11 @@ public class Repository implements Serializable, Dumpable {
      * @param message
      */
     public void commit(String message) {
+        // The commit message must not be empty
+        if (message == null || message.isEmpty()) {
+            throw error(COMMIT_MSG_MISSING_ERR);
+        }
+
         // Read from the file system the HEAD commit object and the staging area
         Commit head = this.head;
 
@@ -193,10 +203,13 @@ public class Repository implements Serializable, Dumpable {
         // Most importantly, set the parent of this new commit to the original HEAD commit
         Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)));
 
-        // Use the staging area in order to modify the files tracked by the new commit
+        // The staging area must not be empty
+        if (staging.getStagedForAddition().isEmpty()) {
+            throw error(STAGING_AREA_EMPTY_ERR);
+        }
+
+        // Add or update the tracked file
         for (String filename : staging.getStagedForAddition().keySet()) {
-            // For files in staging area, if the file is in commit tree, update it
-            // Otherwise, simply add the file into the commit tree
             Map<String, String> tree = commit.getTree();
             if (tree.containsKey(filename)) {
                 String blob = this.head.getBlob(Utils.sha1(filename));
@@ -205,6 +218,13 @@ public class Repository implements Serializable, Dumpable {
                 File file = Utils.join(CWD, filename);
                 tree.put(filename, Utils.sha1(Utils.readContentsAsString(file)));
             }
+        }
+
+        // Remove the untracked files from the commit
+        for (String filename : staging.getStagedForRemoval()) {
+            // remove the untracked file from the commit if there's any
+            Map<String, String> tree = commit.getTree();
+            tree.remove(filename);
         }
 
         // Update the HEAD + branch pointer to the new commit
@@ -220,6 +240,48 @@ public class Repository implements Serializable, Dumpable {
         staging.getStagedForAddition().clear();
         this.save();
     }
+
+    /**
+     * Remove the file from the repository
+     * @param filename
+     */
+    public void rm(String filename) {
+        Map<String, String> stagedForAddition = staging.getStagedForAddition();
+        Set<String> stagedForRemoval = staging.getStagedForRemoval();
+        Map<String, String> tree = head.getTree();
+
+        // If the file is neither staged nor tracked by the head commit, print the error message
+        if (!stagedForAddition.containsKey(filename) && !tree.containsKey(filename)) {
+            throw error(RM_ERR);
+        }
+
+        // Unstage the file if it is currently staged for addition.
+        stagedForAddition.remove(filename);
+
+        // If the file is tracked in the current commit, stage it for removal.
+        if (tree.containsKey(filename)) {
+            stagedForRemoval.add(filename);
+            // Remove the file from the working directory if the user has not already done so
+            // (do not remove it unless it is tracked in the current commit).
+            File file = Utils.join(CWD, filename);
+            file.delete();
+        }
+    }
+
+    public void log() {
+        Commit ptr = head;
+        while (ptr != null) {
+            String filename = Utils.sha1((Object) serialize(ptr));
+
+            System.out.println("===");
+            System.out.printf("commit %s%n", filename);
+            System.out.printf("Date: %s%n", ptr.getTimeStamp());
+            System.out.println(ptr.getMessage());
+
+            ptr = Commit.read(ptr.getParent());
+        }
+    }
+
 
     public void save() {
         Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), this);

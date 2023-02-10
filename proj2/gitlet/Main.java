@@ -3,7 +3,7 @@ package gitlet;
 import java.io.File;
 
 /** Driver class for Gitlet, a subset of the Git version-control system.
- *  @author TODO
+ *  @author Mingqian Yu
  */
 public class Main {
 

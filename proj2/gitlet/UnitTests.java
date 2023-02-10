@@ -1,12 +1,14 @@
 package gitlet;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 
 import static gitlet.Constants.*;
@@ -21,11 +23,28 @@ public class UnitTests {
     // Unix epoch time in designated datetime format
     public static final String UNIX_EPOCH = "00:00:00 UTC, Thu, Jan 01 1970";
 
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
+
+    @Before
+    public void init() {
+        ifExistsThenDelete();
+        Repository repo = new Repository();
+        repo.init();
+        System.out.println("starting...");
+    }
+
+    @After
+    public void cleanup() {
+        System.out.println("cleaning up...");
+        deleteDirectory(Utils.join(CWD, ".gitlet"));
+    }
+
     /**
      * Helper function to init the repository, serves as a test case as well
      */
     @Test
-    public void init() {
+    public void initTest() {
         // Create a GitLet Repository
         Repository repo = new Repository();
         try {
@@ -48,14 +67,17 @@ public class UnitTests {
         assertEquals(commit.getTimeStamp(), UNIX_EPOCH);
     }
 
+    /* Test init with repository already created */
     @Test
-    public void testDuplicateGitLet() {
+    public void testInitFailure() {
+        // add exception rules
+        exceptionRule.expect(GitletException.class);
+        exceptionRule.expectMessage(GITLET_EXISTS_ERR);
+
+        // init while repository already exists
         Repository repo = new Repository();
-        try {
-            repo.init();
-        } catch (Exception e) {
-            assertEquals(e.getMessage(), GITLET_EXISTS_ERR);
-        }
+        repo.init();
+        deleteDirectory(GITLET_DIR);
     }
     
     @Test
@@ -80,9 +102,6 @@ public class UnitTests {
 
     @Test
     public void testAdd() {
-        ifExistsThenDelete();
-        init();
-
         // Define constants here
         final String filename = "input.txt";
         final String firstContent = "created";
@@ -109,16 +128,24 @@ public class UnitTests {
         assertEquals(editedContent, Utils.readContentsAsString(new File(filename)));
 
         // clean up
-        deleteDirectory(Utils.join(CWD, ".gitlet"));
         deleteFiles(filename);
     }
 
+    /* Test adding non-existing file */
     @Test
-    // TODO: Consider corner cases that could potentially break the commit function (still limited to 1 branch)
-    public void testCommit() {
-        ifExistsThenDelete();
-        init();
+    public void testAddFailure() {
+        // add exception rules
+        exceptionRule.expect(GitletException.class);
+        exceptionRule.expectMessage(FILE_NOT_EXIST_ERR);
 
+        // add a file that doesn't exist under the current working directory
+        final String filename = "file_not_exist";
+        Repository repo = new Repository();
+        repo.add(filename);
+    }
+
+    @Test
+    public void testCommit() {
         // Define constants here
         final String firstFilename = "firstFile.txt";
         final String secondFilename = "secondFile.txt";
@@ -160,10 +187,77 @@ public class UnitTests {
         Commit commit2 = getCommitFromID(commitID2);
         assertEquals(commit1.getMessage(), msg1);
         assertEquals(commit2.getMessage(), msg2);
-        // clean up
-        deleteDirectory(Utils.join(CWD, ".gitlet"));
+        // clean up files
         deleteFiles(firstFilename, secondFilename);
     }
+
+    /* Test commit with empty message */
+    @Test
+    public void testCommitFailure1() {
+        final String filename = "test.txt";
+
+        // add exception rules
+        exceptionRule.expect(GitletException.class);
+        exceptionRule.expectMessage(COMMIT_MSG_MISSING_ERR);
+
+        // add a file into the staging area
+        File f = new File(filename);
+        writeContents(f, "test");
+        Repository repo = new Repository();
+        repo.add(filename);
+        try {
+            repo.commit(null);
+        } catch (Exception e) {
+            deleteFiles(filename);
+            throw e;
+        }
+    }
+
+    /* Test commit with empty staging area (for addition / tracked files) */
+    @Test
+    public void testCommitFailure2() {
+        // add exception rules
+        exceptionRule.expect(GitletException.class);
+        exceptionRule.expectMessage(STAGING_AREA_EMPTY_ERR);
+
+        // add a file into the staging area
+        Repository repo = new Repository();
+        repo.commit("second commit");
+    }
+
+    @Test
+    public void testLog() {
+        // Define constants here
+        final String firstFilename = "firstFile.txt";
+        final String secondFilename = "secondFile.txt";
+        final String msg1 = "create first file";
+        final String msg2 = "add second file and modified first file";
+
+        // add a new file in the home directory and commit (commit id 1)
+        Utils.writeContents(new File(firstFilename), "created");
+        Repository repo = new Repository();
+        repo.add(firstFilename);
+        Staging staging = repo.staging;
+
+        repo.commit(msg1);
+
+        // add a second new file, also modify the file in the last commit, then commit (commit id 2)
+        File f1 = Utils.join(CWD, firstFilename);
+        File f2 = Utils.join(CWD, secondFilename);
+        writeContents(f1, "edited");
+        writeContents(f2, "random contents");
+        repo.add(secondFilename);
+
+        repo.commit(msg2);
+
+        // test log
+        repo.log();
+
+        // clean up files
+        deleteFiles(firstFilename, secondFilename);
+    }
+
+    /* Helper functions */
 
     private void deleteFiles(String... filenames) {
         for (String filename : filenames) {

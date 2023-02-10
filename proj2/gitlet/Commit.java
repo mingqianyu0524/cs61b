@@ -36,7 +36,7 @@ public class Commit implements Serializable {
      * Under the assumption that the depth of the tree is 1, it's reasonable to use a map data structure
      * to represent the tree.
      *
-     * Key = file name SHA1
+     * Key = file name
      * Value = file blob SHA1
      */
     private final Map<String, String> tree;
@@ -71,8 +71,12 @@ public class Commit implements Serializable {
 
     /** Deserialize the commit from the repository, and return the Commit object */
     public static Commit read(String fileName) {
-        File f = join(COMMITS_DIR, fileName);
-        return readObject(f, Commit.class);
+        try {
+            File f = join(COMMITS_DIR, fileName);
+            return readObject(f, Commit.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
