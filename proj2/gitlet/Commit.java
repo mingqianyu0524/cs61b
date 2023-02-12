@@ -84,7 +84,7 @@ public class Commit implements Serializable {
      * Otherwise, set it to the current date.
      */
     public void setTimestamp(boolean init) {
-        DateFormat df = new SimpleDateFormat("HH:mm:ss zzz, E, MMM dd yyyy");
+        DateFormat df = new SimpleDateFormat("E MMM dd HH:mm:ss yyyy Z");
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date date = init? new Date(0L) : new Date();
         this.timestamp = df.format(date);

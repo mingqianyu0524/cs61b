@@ -16,16 +16,30 @@ public class Main {
             return;
         }
         String firstArg = args[0];
-        switch(firstArg) {
-            case "init":
+        switch (firstArg) {
+            case "init" -> {
                 // TODO: handle the `init` command
                 Repository repository = new Repository();
                 repository.init();
-                break;
-            case "add":
+                repository.save();
+            }
+            case "add" -> {
                 // TODO: handle the `add [filename]` command
-                break;
+                Repository repository = new Repository();
+                repository.add(args[1]);
+                repository.save();
+            }
             // TODO: FILL THE REST IN
+            case "commit" -> {
+                Repository repository = new Repository();
+                repository.commit(args[1]);
+                repository.save();
+            }
+            case "log" -> {
+                Repository repository = new Repository();
+                repository.log();
+                repository.save();
+            }
         }
     }
 }

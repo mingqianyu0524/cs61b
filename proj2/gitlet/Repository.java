@@ -268,6 +268,63 @@ public class Repository implements Serializable, Dumpable {
         }
     }
 
+    /**
+     * Descriptions:
+     *
+     * `java gitlet.Main checkout -- [file name]`
+     *
+     * Takes the version of the file as it exists in the head commit and puts it in the working directory,
+     * overwriting the version of the file that’s already there if there is one.
+     * The new version of the file is not staged.
+     *
+     * `java gitlet.Main checkout [commit id] -- [file name]`
+     *
+     * Takes the version of the file as it exists in the commit with the given id,
+     * and puts it in the working directory,
+     * overwriting the version of the file that’s already there if there is one.
+     * The new version of the file is not staged.
+     *
+     * `java gitlet.Main checkout [branch name]`
+     *
+     * Takes all files in the commit at the head of the given branch, and puts them in the working directory,
+     * overwriting the versions of the files that are already there if they exist.
+     * Also, at the end of this command, the given branch will now be considered the current branch (HEAD).
+     *
+     * Any files that are tracked in the current branch but are not present in the checked-out branch are deleted.
+     * The staging area is cleared, unless the checked-out branch is the current branch (see Failure cases below).
+     *
+     */
+
+    public void checkout(String commitID, String filename, String branchName) {
+        // TODO: parse args and use regex to match patterns
+
+        String blob = null;
+
+        // Checkout file ('--' exists but commit id not exist in args)
+        if (commitID == null) {
+            blob = head.getBlob(filename);
+        }
+
+        // Checkout commit file (both '--' and commit id exist in args)
+        if (commitID != null) {
+            Commit commit = Commit.read(commitID);
+            assert commit != null;
+            blob = commit.getTree().get(filename);
+        }
+
+        // after getting blob, read content and overwrite file
+        String content = readContentsAsString(Utils.join(BLOBS_DIR, blob));
+        File f = Utils.join(CWD, filename);
+        writeContents(f, content);
+
+        // Checkout branch ('--' not exist in args)
+        if (branchName != null) {
+            Branch branch = Branch.load(Utils.join(BLOBS_DIR, branchName));
+            branch.getBranchHead();
+        }
+    }
+
+    // TODO: Per project description, the log() function will need to support "Merge", we are not there yet
     public void log() {
         Commit ptr = head;
         while (ptr != null) {
@@ -277,6 +334,7 @@ public class Repository implements Serializable, Dumpable {
             System.out.printf("commit %s%n", filename);
             System.out.printf("Date: %s%n", ptr.getTimeStamp());
             System.out.println(ptr.getMessage());
+            System.out.println();
 
             ptr = Commit.read(ptr.getParent());
         }

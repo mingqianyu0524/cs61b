@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
 public class UnitTests {
 
     // Initial commit SHA1 hash, remember to update if the Commit class gets modified
-    public static final String INITIAL_COMMIT = "b3a82f44130594618a373770e45b91e9bfbc3472";
+    public static final String INITIAL_COMMIT = "f8d64dedf9f630fd9494094152f94d607bca55d1";
     // Unix epoch time in designated datetime format
     public static final String UNIX_EPOCH = "00:00:00 UTC, Thu, Jan 01 1970";
 
@@ -225,6 +225,45 @@ public class UnitTests {
         repo.commit("second commit");
     }
 
+    /* Test rm with file presented in the HEAD commit */
+    @Test
+    public void testRm1() {
+        // Create a test file with content
+        final String filename = "test.txt";
+        File file = new File(filename);
+        Utils.writeContents(file, "test");
+        assertTrue(file.isFile());
+        // Add the file and commit
+        Repository repo = new Repository();
+        repo.add(filename);
+        repo.commit("add test file");
+        // Remove the file using git rm
+        repo.rm(filename);
+        // Since the file is in the last commit, GitLet is supposed to remove the file from dir
+        // and stage it for removal
+        File f = Utils.join(CWD, filename);
+        assertFalse(f.isFile());
+        assertTrue(repo.staging.getStagedForRemoval().contains(filename));
+    }
+
+    /* Test rm with file presented in the staging area */
+    @Test
+    public void testRm2() {
+        // Create a test file with content
+        final String filename = "test.txt";
+        File file = new File(filename);
+        Utils.writeContents(file, "test");
+        assertTrue(file.isFile());
+        // Add the file and commit
+        Repository repo = new Repository();
+        repo.add(filename);
+        // Remove the file using git rm
+        repo.rm(filename);
+        // Since the file is in the staging area, but not in the current commit, it will be unstaged
+        // Note: There's no need to stage it for removal since the file is not tracked by the current HEADs
+        assertFalse(repo.staging.getStagedForAddition().containsKey(filename));
+    }
+
     @Test
     public void testLog() {
         // Define constants here
@@ -235,23 +274,22 @@ public class UnitTests {
 
         // add a new file in the home directory and commit (commit id 1)
         Utils.writeContents(new File(firstFilename), "created");
-        Repository repo = new Repository();
-        repo.add(firstFilename);
-        Staging staging = repo.staging;
+        Main.main(new String[]{"add", firstFilename});
+        Staging staging = new Repository().staging;
 
-        repo.commit(msg1);
+        Main.main(new String[]{"commit", msg1});
 
         // add a second new file, also modify the file in the last commit, then commit (commit id 2)
         File f1 = Utils.join(CWD, firstFilename);
         File f2 = Utils.join(CWD, secondFilename);
         writeContents(f1, "edited");
         writeContents(f2, "random contents");
-        repo.add(secondFilename);
+        Main.main(new String[]{"add", secondFilename});
 
-        repo.commit(msg2);
+        Main.main(new String[]{"commit", msg2});
 
         // test log
-        repo.log();
+        Main.main(new String[]{"log"});
 
         // clean up files
         deleteFiles(firstFilename, secondFilename);
