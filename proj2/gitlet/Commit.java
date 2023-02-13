@@ -7,10 +7,8 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import static gitlet.Utils.*;
 import static gitlet.Constants.*;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TimeZone;
+
+import java.util.*;
 
 /** Represents a gitlet commit object.
  *  The commit object is Java serializable for the goal of persistence.
@@ -70,13 +68,42 @@ public class Commit implements Serializable {
     }
 
     /** Deserialize the commit from the repository, and return the Commit object */
-    public static Commit read(String fileName) {
-        try {
-            File f = join(COMMITS_DIR, fileName);
-            return readObject(f, Commit.class);
-        } catch (Exception e) {
-            return null;
+    public static Commit read(String commitID) {
+        String filename = expandCommitID(commitID);
+
+        File f = join(COMMITS_DIR, filename);
+        Commit commit = readObject(f, Commit.class);
+        if (commit == null) {
+            throw error(COMMIT_NOT_EXIST_ERR);
         }
+        return commit;
+    }
+
+    /** Expand the commit id to full 40-byte long sha1 id */
+    private static String expandCommitID(String shortened) {
+        // If the commit id is null OR exceeds 40 bytes, exit
+        if (shortened == null || shortened.length() > 40) {
+            throw error("Invalid filename");
+        }
+
+        // Match the provided commit id with the file names under the directory
+        // The project description specified a more efficient way of organizing the commit directory structure
+        // in order to speed up the lookup process.
+        List<String> commitIDs = Utils.plainFilenamesIn(Utils.join(COMMITS_DIR));
+        assert commitIDs != null;
+        String filename = "";
+        for (String cid : commitIDs) {
+            if (cid.indexOf(shortened) == 0) {
+                filename = cid;
+                break;
+            }
+        }
+
+        // If commit doesn't exist, exit
+        if (filename.isEmpty()) {
+            throw error("Invalid filename");
+        }
+        return filename;
     }
 
     /**
@@ -88,6 +115,11 @@ public class Commit implements Serializable {
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date date = init? new Date(0L) : new Date();
         this.timestamp = df.format(date);
+    }
+
+    /* Get a list of files tracked by the current commit */
+    public List<String> getTrackedFiles() {
+        return new LinkedList<>(this.tree.keySet());
     }
 
     public String getTimeStamp() {
@@ -103,12 +135,12 @@ public class Commit implements Serializable {
     }
 
     /**
-     * Get the file blob by looking up the file name in the commit tree
-     *
-     * @return SHA1 hash of the file blob
+     * Get the file blob name in this commit tree by providing the filename
+     * @param filename
+     * @return String blob name if the file exists in the commit tree, null if it doesn't exist
      */
-    public String getBlob(String filename) {
-        return this.tree.get(sha1(filename));
+    public String getBlobName(String filename) {
+        return this.tree.get(filename);
     }
 
     public Map<String, String> getTree() {

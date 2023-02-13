@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -76,7 +77,8 @@ public class Repository implements Serializable, Dumpable {
 
         // Create the master branch and assign the HEAD pointer
         this.head = commit;
-        Branch.save(Utils.join(BRANCHES_DIR, currentBranch), new Branch("master", head));
+        File branch = Utils.join(BRANCHES_DIR, currentBranch);
+        writeContents(branch, Utils.sha1((Object) serialize(commit)));
         this.currentBranch = "master";
 
         // Save this repository object under .gitlet/
@@ -128,7 +130,7 @@ public class Repository implements Serializable, Dumpable {
 
         // Compare the file to the one in the current head commit
         Commit head = this.head;
-        String headBlobName = head.getBlob(filename);
+        String headBlobName = head.getBlobName(filename);
         if (headBlobName != null) {
             String headBlobContent = Utils.readContentsAsString(join(BLOBS_DIR, headBlobName));
             // Compare blob with headBlob, if they are equal, then do not add the file to the staging area
@@ -208,11 +210,12 @@ public class Repository implements Serializable, Dumpable {
             throw error(STAGING_AREA_EMPTY_ERR);
         }
 
-        // Add or update the tracked file
+        // Add the files staged for addition from parent
         for (String filename : staging.getStagedForAddition().keySet()) {
             Map<String, String> tree = commit.getTree();
             if (tree.containsKey(filename)) {
-                String blob = this.head.getBlob(Utils.sha1(filename));
+                String blobName = this.head.getBlobName(filename);
+                String blob = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blobName));
                 tree.put(filename, blob);
             } else {
                 File file = Utils.join(CWD, filename);
@@ -220,20 +223,17 @@ public class Repository implements Serializable, Dumpable {
             }
         }
 
-        // Remove the untracked files from the commit
+        // Remove the files staged for removal from parent
         for (String filename : staging.getStagedForRemoval()) {
-            // remove the untracked file from the commit if there's any
             Map<String, String> tree = commit.getTree();
             tree.remove(filename);
         }
 
         // Update the HEAD + branch pointer to the new commit
         this.head = commit;
-
-        File branchFile = Utils.join(BRANCHES_DIR, currentBranch);
-        Branch branch = Branch.load(branchFile);
-        branch.setHead(commit);
-        Branch.save(branchFile, branch);
+        File branch = Utils.join(BRANCHES_DIR, currentBranch);
+        readContentsAsString(branch);
+        writeContents(branch, Utils.sha1((Object) serialize(commit)));
 
         // Store any new or modified commit object into the file system and clean up the staging area
         commit.save();
@@ -295,33 +295,59 @@ public class Repository implements Serializable, Dumpable {
      *
      */
 
-    public void checkout(String commitID, String filename, String branchName) {
-        // TODO: parse args and use regex to match patterns
+    public void checkout( boolean isBranch, String commitID, String filename, String branch) {
 
+        // Checkout branch
+        if (isBranch) {
+            if (branch.equals(currentBranch)) {
+                throw error(CHECKOUT_CURRENT_BRANCH);
+            }
+
+            // If there's no untracked files, delete all files under CWD
+            if (!getUntracked().isEmpty()) {
+                throw error(UNTRACKED_ERR);
+            }
+            cleanDirectory();
+
+            // Retrieve all files from the checkout branch and store them under CWD
+            try {
+                commitID = Utils.readContentsAsString(Utils.join(BRANCHES_DIR, branch));
+            } catch (IllegalArgumentException e) {
+                throw error(BRANCH_NOT_EXIST);
+            }
+            Commit commit = Commit.read(commitID);
+            for (String fn : commit.getTree().keySet()) {
+                // Read the blobs in the commit tree, and write to the files in CWD
+                String blob = commit.getBlobName(fn);
+                String c = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blob));
+                writeContents(Utils.join(CWD, fn), c);
+            }
+
+            // Reset the current branch, HEAD pointer and staging area
+            currentBranch = branch;
+            head = commit;
+            staging = new Staging();
+
+            return;
+        }
+
+        // Checkout a single file
         String blob = null;
 
-        // Checkout file ('--' exists but commit id not exist in args)
         if (commitID == null) {
-            blob = head.getBlob(filename);
-        }
-
-        // Checkout commit file (both '--' and commit id exist in args)
-        if (commitID != null) {
+            blob = head.getBlobName(filename);
+        } else {
             Commit commit = Commit.read(commitID);
-            assert commit != null;
             blob = commit.getTree().get(filename);
         }
-
-        // after getting blob, read content and overwrite file
-        String content = readContentsAsString(Utils.join(BLOBS_DIR, blob));
-        File f = Utils.join(CWD, filename);
-        writeContents(f, content);
-
-        // Checkout branch ('--' not exist in args)
-        if (branchName != null) {
-            Branch branch = Branch.load(Utils.join(BLOBS_DIR, branchName));
-            branch.getBranchHead();
+        if (blob == null) {
+            throw error(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
         }
+
+        String c = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blob));
+        File f = Utils.join(CWD, filename);
+        writeContents(f, c);
+
     }
 
     // TODO: Per project description, the log() function will need to support "Merge", we are not there yet
@@ -336,6 +362,9 @@ public class Repository implements Serializable, Dumpable {
             System.out.println(ptr.getMessage());
             System.out.println();
 
+            if (ptr.getParent() == null) {
+                break;
+            }
             ptr = Commit.read(ptr.getParent());
         }
     }
@@ -362,6 +391,40 @@ public class Repository implements Serializable, Dumpable {
         COMMITS_DIR.mkdir();
         BRANCHES_DIR.mkdir();
         BLOBS_DIR.mkdir();
+    }
+
+    /**
+     * Clean the current working directory (except .gitlet/)
+     */
+    public void cleanDirectory() {
+        File dir = Utils.join(CWD);
+        File[] files = dir.listFiles();
+        assert files != null;
+        for (File file : files) {
+            if (!file.getName().equals(".gitlet")) {
+                file.delete();
+            }
+        }
+    }
+
+    // untracked = CWD - staged - (CWD & tracked)
+    private List<String> getUntracked() {
+        List<String> cwd = plainFilenamesIn(CWD);
+        List<String> staged = staging.getStagedFiles();
+        List<String> tracked = head.getTrackedFiles();
+        List<String> untracked = plainFilenamesIn(CWD);
+
+        for (String s : cwd) {
+            tracked.remove(s);
+        }
+        for (String s : staged) {
+            untracked.remove(s);
+        }
+        for (String s : tracked) {
+            untracked.remove(s);
+        }
+
+        return untracked;
     }
 
     @Override

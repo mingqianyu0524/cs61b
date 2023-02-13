@@ -26,6 +26,8 @@ public class Constants {
 
     /** Error messages */
 
+    public static final String INVALID_ARG = "Invalid number of arguments for command ";
+
     public static final String GITLET_EXISTS_ERR =
             "A Gitlet version-control system already exists in the current directory.";
 
@@ -38,4 +40,14 @@ public class Constants {
 
     public static final String RM_ERR = "No reason to remove the file.";
 
+    public static final String COMMIT_NOT_EXIST_ERR = "No commit with that id exists.";
+
+    public static final String FILE_NOT_IN_COMMIT = "File does not exist in that commit.";
+
+    public static final String CHECKOUT_CURRENT_BRANCH = "No need to checkout the current branch.";
+
+    public static final String BRANCH_NOT_EXIST = "No such branch exists.";
+
+    public static final String UNTRACKED_ERR = "There is an untracked file in the way; " +
+            "delete it, or add and commit it first.";
 }
