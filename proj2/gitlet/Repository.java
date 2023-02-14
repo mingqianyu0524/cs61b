@@ -5,9 +5,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static gitlet.Constants.*;
 import static gitlet.Utils.*;
@@ -368,6 +366,48 @@ public class Repository implements Serializable, Dumpable {
             }
             ptr = Commit.read(ptr.getParent());
         }
+    }
+
+    /**
+     * Description: Displays what branches currently exist, and marks the current branch with a *.
+     * Also displays what files have been staged for addition or removal.
+     * An example of the exact format it should follow is as follows.
+     */
+    public void status() {
+        System.out.println("=== Branches ===");
+        List<String> branches = Utils.plainFilenamesIn(BRANCHES_DIR);
+        for (String branch : branches) {
+            if (branch.equals(currentBranch)) {
+                System.out.println("*" + branch);
+            } else {
+                System.out.println(branch);
+            }
+        }
+        System.out.println();
+
+        System.out.println("=== Staged Files ===");
+
+        List<String> stagedFiles = new ArrayList<>(staging.getStagedForAddition().keySet());
+        Collections.sort(stagedFiles);
+
+        for (String stagedFile : stagedFiles) {
+            System.out.println(stagedFile);
+        }
+        System.out.println();
+
+        System.out.println("=== Removed Files ===");
+        for (String removedFile : staging.getStagedForRemoval()) {
+            System.out.println(removedFile);
+        }
+        System.out.println();
+
+        System.out.println("=== Modifications Not Staged For Commit ===");
+        // TODO
+        System.out.println();
+
+        System.out.println("=== Untracked Files ===");
+        // TODO
+        System.out.println();
     }
 
 
