@@ -214,9 +214,8 @@ public class Repository implements Serializable, Dumpable {
         for (String filename : staging.getStagedForAddition().keySet()) {
             Map<String, String> tree = commit.getTree();
             if (tree.containsKey(filename)) {
-                String blobName = this.head.getBlobName(filename);
-                String blob = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blobName));
-                tree.put(filename, blob);
+                String blobName = staging.getStagedForAddition().get(filename);
+                tree.put(filename, blobName);
             } else {
                 File file = Utils.join(CWD, filename);
                 tree.put(filename, Utils.sha1(Utils.readContentsAsString(file)));
@@ -338,13 +337,14 @@ public class Repository implements Serializable, Dumpable {
             blob = head.getBlobName(filename);
         } else {
             Commit commit = Commit.read(commitID);
-            blob = commit.getTree().get(filename);
+            blob = commit.getBlobName(filename);
         }
         if (blob == null) {
             throw error(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
         }
 
-        String c = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blob));
+        File bf = Utils.join(BLOBS_DIR, blob);
+        String c = Utils.readContentsAsString(bf);
         File f = Utils.join(CWD, filename);
         writeContents(f, c);
 
