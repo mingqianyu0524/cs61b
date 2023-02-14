@@ -5,9 +5,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static gitlet.Constants.*;
 import static gitlet.Utils.*;
@@ -245,6 +243,7 @@ public class Repository implements Serializable, Dumpable {
      * Remove the file from the repository
      * @param filename
      */
+    // TODO: Conduct unit test?
     public void rm(String filename) {
         Map<String, String> stagedForAddition = staging.getStagedForAddition();
         Set<String> stagedForRemoval = staging.getStagedForRemoval();
@@ -315,7 +314,9 @@ public class Repository implements Serializable, Dumpable {
             } catch (IllegalArgumentException e) {
                 throw error(BRANCH_NOT_EXIST);
             }
+
             Commit commit = Commit.read(commitID);
+
             for (String fn : commit.getTree().keySet()) {
                 // Read the blobs in the commit tree, and write to the files in CWD
                 String blob = commit.getBlobName(fn);
@@ -341,7 +342,8 @@ public class Repository implements Serializable, Dumpable {
             blob = commit.getBlobName(filename);
         }
         if (blob == null) {
-            throw error(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
+            Utils.message(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
+            return;
         }
 
         File bf = Utils.join(BLOBS_DIR, blob);
@@ -388,7 +390,11 @@ public class Repository implements Serializable, Dumpable {
         System.out.println();
 
         System.out.println("=== Staged Files ===");
-        for (String stagedFile : staging.getStagedForAddition().keySet()) {
+
+        List<String> stagedFiles = new ArrayList<>(staging.getStagedForAddition().keySet());
+        Collections.sort(stagedFiles);
+
+        for (String stagedFile : stagedFiles) {
             System.out.println(stagedFile);
         }
         System.out.println();
