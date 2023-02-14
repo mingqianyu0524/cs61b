@@ -14,7 +14,7 @@ public class Main {
      *  <COMMAND> <OPERAND1> <OPERAND2> ... 
      */
 
-    private static void validateNumArgs(String[] args, int expected, String pattern) {
+    private static void validateArgs(String[] args, int expected, String pattern) {
         StringBuilder composed = new StringBuilder();
 
         for (String arg : args) {
@@ -44,27 +44,33 @@ public class Main {
 
         switch (firstArg) {
             case "init" -> {
-                validateNumArgs(args, 1, firstArg);
+                validateArgs(args, 1, firstArg);
                 Repository repository = new Repository();
                 repository.init();
                 repository.save();
             }
             case "add" -> {
-                validateNumArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
                 Repository repository = new Repository();
                 repository.add(args[1]);
                 repository.save();
             }
             case "commit" -> {
-                validateNumArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
                 Repository repository = new Repository();
                 repository.commit(args[1]);
                 repository.save();
             }
             case "log" -> {
-                validateNumArgs(args, 1, firstArg);
+                validateArgs(args, 1, firstArg);
                 Repository repository = new Repository();
                 repository.log();
+                repository.save();
+            }
+            case "status" -> {
+                validateArgs(args, 1, firstArg);
+                Repository repository = new Repository();
+                repository.status();
                 repository.save();
             }
             case "checkout" -> {

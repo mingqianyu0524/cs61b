@@ -370,6 +370,44 @@ public class Repository implements Serializable, Dumpable {
         }
     }
 
+    /**
+     * Description: Displays what branches currently exist, and marks the current branch with a *.
+     * Also displays what files have been staged for addition or removal.
+     * An example of the exact format it should follow is as follows.
+     */
+    public void status() {
+        System.out.println("=== Branches ===");
+        List<String> branches = Utils.plainFilenamesIn(BRANCHES_DIR);
+        for (String branch : branches) {
+            if (branch.equals(currentBranch)) {
+                System.out.println("*" + branch);
+            } else {
+                System.out.println(branch);
+            }
+        }
+        System.out.println();
+
+        System.out.println("=== Staged Files ===");
+        for (String stagedFile : staging.getStagedForAddition().keySet()) {
+            System.out.println(stagedFile);
+        }
+        System.out.println();
+
+        System.out.println("=== Removed Files ===");
+        for (String removedFile : staging.getStagedForRemoval()) {
+            System.out.println(removedFile);
+        }
+        System.out.println();
+
+        System.out.println("=== Modifications Not Staged For Commit ===");
+        // TODO
+        System.out.println();
+
+        System.out.println("=== Untracked Files ===");
+        // TODO
+        System.out.println();
+    }
+
 
     public void save() {
         Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), this);
