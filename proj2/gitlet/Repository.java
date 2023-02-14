@@ -64,7 +64,8 @@ public class Repository implements Serializable, Dumpable {
         // Check if the version-control system already exists
         Path path = Paths.get(".gitlet");
         if (Files.exists(path)) {
-            throw error(GITLET_EXISTS_ERR);
+            message(GITLET_EXISTS_ERR);
+            return;
         }
 
         // Initialize file directories for GitLet repository and set staging area

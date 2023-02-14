@@ -26,7 +26,7 @@ public class Constants {
 
     /** Error messages */
 
-    public static final String INVALID_ARG = "Invalid number of arguments for command ";
+    public static final String INCORRECT_OPERANDS = "Incorrect operands.";
 
     public static final String GITLET_EXISTS_ERR =
             "A Gitlet version-control system already exists in the current directory.";
