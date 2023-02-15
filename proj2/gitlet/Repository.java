@@ -300,13 +300,10 @@ public class Repository implements Serializable, Dumpable {
             if (branch.equals(currentBranch)) {
                 throw error(CHECKOUT_CURRENT_BRANCH);
             }
-
-            // If there's no untracked files, delete all files under CWD
             List<String> untracked = this.getUntracked();
             if (!untracked.isEmpty()) {
                 throw error(UNTRACKED_ERR);
             }
-            cleanDirectory();
 
             // Retrieve all files from the checkout branch and store them under CWD
             try {
@@ -314,6 +311,8 @@ public class Repository implements Serializable, Dumpable {
             } catch (IllegalArgumentException e) {
                 throw error(BRANCH_NOT_EXIST);
             }
+            // Delete all files under the current working directory
+            cleanDirectory();
 
             Commit commit = Commit.read(commitID);
 
@@ -457,7 +456,7 @@ public class Repository implements Serializable, Dumpable {
      * This command does NOT immediately switch to the newly created branch (just as in real Git).
      * Before you ever call branch, your code should be running with a default branch called “master”.
      *
-     * @param branchName branch name
+     * @param branchName branch name from user input
      */
     public void branch(String branchName) {
         for (String n : Objects.requireNonNull(plainFilenamesIn(BRANCHES_DIR))) {
@@ -470,6 +469,28 @@ public class Repository implements Serializable, Dumpable {
         File branch = Utils.join(BRANCHES_DIR, currentBranch);
         String commitID = readContentsAsString(branch);
         writeContents(f, commitID);
+    }
+
+    /**
+     * Deletes the branch with the given name. This only means to delete the pointer associated with the branch;
+     * it does not mean to delete all commits that were created under the branch, or anything like that.
+     *
+     * @param given branch name from user input
+     */
+    public void rmBranch(String given) {
+        if (currentBranch.equals(given)) {
+            throw error("Cannot remove the current branch.");
+        }
+        String branchName = "";
+        for (String n : Objects.requireNonNull(plainFilenamesIn(BRANCHES_DIR))) {
+            if (n.equals(given)) {
+                branchName = given;
+                break;
+            }
+        }
+        if (branchName.isEmpty()) throw error("A branch with that name does not exist.");
+        // Delete branch
+        Utils.join(BRANCHES_DIR, branchName).delete();
     }
 
     public void save() {

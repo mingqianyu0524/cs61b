@@ -149,6 +149,15 @@ public class Main {
                     Utils.message(e.getMessage());
                 }
             }
+            case "rm-branch" -> {
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                repository = new Repository();
+                try {
+                    repository.rmBranch(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
+            }
             default -> Utils.message("No command with that name exists.");
         }
         repository.save();
