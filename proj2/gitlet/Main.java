@@ -136,9 +136,17 @@ public class Main {
                     try {
                         repository.checkout(false, args[1], args[3], null);
                     } catch (GitletException e) {
-                        // TODO: bug somewhere near (test 29) - print the error msg twice somehow?
                         Utils.message(e.getMessage());
                     }
+                }
+            }
+            case "branch" -> {
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                repository = new Repository();
+                try {
+                    repository.branch(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
                 }
             }
             default -> Utils.message("No command with that name exists.");

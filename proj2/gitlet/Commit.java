@@ -97,11 +97,6 @@ public class Commit implements Serializable {
                 break;
             }
         }
-
-        // If commit doesn't exist, exit
-        if (filename.isEmpty()) {
-            message(COMMIT_NOT_EXIST_ERR);
-        }
         return filename;
     }
 

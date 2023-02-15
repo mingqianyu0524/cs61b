@@ -302,7 +302,8 @@ public class Repository implements Serializable, Dumpable {
             }
 
             // If there's no untracked files, delete all files under CWD
-            if (!getUntracked().isEmpty()) {
+            List<String> untracked = this.getUntracked();
+            if (!untracked.isEmpty()) {
                 throw error(UNTRACKED_ERR);
             }
             cleanDirectory();
@@ -450,6 +451,26 @@ public class Repository implements Serializable, Dumpable {
         System.out.println();
     }
 
+    /**
+     * Creates a new branch with the given name, and points it at the current head commit.
+     * A branch is nothing more than a name for a reference (a SHA-1 identifier) to a commit node.
+     * This command does NOT immediately switch to the newly created branch (just as in real Git).
+     * Before you ever call branch, your code should be running with a default branch called “master”.
+     *
+     * @param branchName branch name
+     */
+    public void branch(String branchName) {
+        for (String n : Objects.requireNonNull(plainFilenamesIn(BRANCHES_DIR))) {
+            if (n.equals(branchName)) {
+                throw error("A branch with that name already exists.");
+            }
+        }
+        // The new branch points to the current branch's HEAD commit
+        File f = new File(BRANCHES_DIR, branchName);
+        File branch = Utils.join(BRANCHES_DIR, currentBranch);
+        String commitID = readContentsAsString(branch);
+        writeContents(f, commitID);
+    }
 
     public void save() {
         Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), this);
@@ -493,11 +514,8 @@ public class Repository implements Serializable, Dumpable {
         List<String> cwd = plainFilenamesIn(CWD);
         List<String> staged = staging.getStagedFiles();
         List<String> tracked = head.getTrackedFiles();
-        List<String> untracked = plainFilenamesIn(CWD);
+        ArrayList<String> untracked = new ArrayList<>(plainFilenamesIn(CWD));
 
-        for (String s : cwd) {
-            tracked.remove(s);
-        }
         for (String s : staged) {
             untracked.remove(s);
         }
