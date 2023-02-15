@@ -243,6 +243,7 @@ public class Repository implements Serializable, Dumpable {
      * Remove the file from the repository
      * @param filename
      */
+    // TODO: Conduct unit test?
     public void rm(String filename) {
         Map<String, String> stagedForAddition = staging.getStagedForAddition();
         Set<String> stagedForRemoval = staging.getStagedForRemoval();
@@ -313,7 +314,9 @@ public class Repository implements Serializable, Dumpable {
             } catch (IllegalArgumentException e) {
                 throw error(BRANCH_NOT_EXIST);
             }
+
             Commit commit = Commit.read(commitID);
+
             for (String fn : commit.getTree().keySet()) {
                 // Read the blobs in the commit tree, and write to the files in CWD
                 String blob = commit.getBlobName(fn);
@@ -339,7 +342,8 @@ public class Repository implements Serializable, Dumpable {
             blob = commit.getBlobName(filename);
         }
         if (blob == null) {
-            throw error(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
+            Utils.message(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
+            return;
         }
 
         File bf = Utils.join(BLOBS_DIR, blob);

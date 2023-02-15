@@ -72,11 +72,10 @@ public class Commit implements Serializable {
         String filename = expandCommitID(commitID);
 
         File f = join(COMMITS_DIR, filename);
-        Commit commit = readObject(f, Commit.class);
-        if (commit == null) {
-            throw error(COMMIT_NOT_EXIST_ERR);
+        if (!f.isFile()) {
+            throw Utils.error("No commit with that id exists.");
         }
-        return commit;
+        return readObject(f, Commit.class);
     }
 
     /** Expand the commit id to full 40-byte long sha1 id */
@@ -101,7 +100,7 @@ public class Commit implements Serializable {
 
         // If commit doesn't exist, exit
         if (filename.isEmpty()) {
-            throw error("Invalid filename");
+            message(COMMIT_NOT_EXIST_ERR);
         }
         return filename;
     }
