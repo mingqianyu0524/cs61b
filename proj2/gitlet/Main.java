@@ -49,71 +49,87 @@ public class Main {
         //  (i.e., one containing a .gitlet subdirectory), but is not in such a directory,
         //  print the message Not in an initialized Gitlet directory.
 
-        Repository repository = new Repository();
+        Repository repository = null;
 
         switch (firstArg) {
             case "init" -> {
-                validateArgs(args, 1, firstArg);
                 try {
+                    validateArgs(args, 1, firstArg);
+                    repository = new Repository();
                     repository.init();
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             case "add" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
-                repository = new Repository(); // TODO: Add load() to Repository and returns an existing repository
                 try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                    repository = Repository.load();
                     repository.add(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             case "commit" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
-                repository = new Repository();
                 try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
+                    repository = Repository.load();
                     repository.commit(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             case "log" -> {
-                validateArgs(args, 1, firstArg);
-                repository = new Repository();
-                repository.log();
+                try {
+                    validateArgs(args, 1, firstArg);
+                    repository = Repository.load();
+                    repository.log();
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
             }
             case "global-log" -> {
-                validateArgs(args, 1, firstArg);
-                repository = new Repository();
-                repository.globalLog();
+                try {
+                    validateArgs(args, 1, firstArg);
+                    repository = Repository.load();
+                    repository.globalLog();
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
             }
             case "find" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
-                repository = new Repository();
                 try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
+                    repository = Repository.load();
                     repository.find(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             case "status" -> {
-                validateArgs(args, 1, firstArg);
-                repository = new Repository();
-                repository.status();
+                try {
+                    validateArgs(args, 1, firstArg);
+                    repository = Repository.load();
+                    repository.status();
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
             }
             case "rm" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
-                repository = new Repository();
                 try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                    repository = Repository.load();
                     repository.rm(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
+            // TODO: Refactor this code, has too many cases
             case "checkout" -> {
-                repository = new Repository();
-                try {validateArgs(args, 0, firstArg + "\\s*[A-Fa-f0-9]*\\s*[--]*\\s*[-_.A-Za-z0-9\\s]+");}
+                try {
+                    validateArgs(args, 0, firstArg + "\\s*[A-Fa-f0-9]*\\s*[--]*\\s*[-_.A-Za-z0-9\\s]+");
+                    repository = Repository.load();
+                }
                 catch (GitletException e) {
                     Utils.message(e.getMessage());
                     return;
@@ -141,34 +157,43 @@ public class Main {
                 }
             }
             case "branch" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
-                repository = new Repository();
                 try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                    repository = Repository.load();
                     repository.branch(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             case "rm-branch" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
-                repository = new Repository();
                 try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                    repository = Repository.load();
                     repository.rmBranch(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             case "reset" -> {
-                validateArgs(args, 2, firstArg + "\\s*[A-Fa-f0-9]*");
-                repository = new Repository();
                 try {
+                    validateArgs(args, 2, firstArg + "\\s*[A-Fa-f0-9]*");
+                    repository = Repository.load();
                     repository.reset(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
+            }
+            case "merge" -> {
+                try {
+                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
+                    repository = Repository.load();
+                    repository.merge(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
             }
             default -> Utils.message("No command with that name exists.");
         }
-        repository.save();
+        Repository.save(repository);
     }
 }

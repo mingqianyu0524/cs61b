@@ -23,12 +23,16 @@ public class Repository implements Serializable, Dumpable {
 
     /* Fields */
 
-    Staging staging; // Staging area
+    private Staging staging; // Staging area
 
-    String currentBranch = "master"; // Name of the current branch
+    private String currentBranch = "master"; // Name of the current branch
 
-    Commit head; // Pointer to the HEAD commit of the current branch
+    private Commit head; // Pointer to the HEAD commit of the current branch
 
+    private static class Staging implements Serializable {
+        Map<String, String> stagedForAddition = new HashMap<>();
+        Set<String> stagedForRemoval = new HashSet<>();
+    }
 
     /* Constructor */
 
@@ -80,7 +84,7 @@ public class Repository implements Serializable, Dumpable {
         this.currentBranch = "master";
 
         // Save this repository object under .gitlet/
-        this.save();
+        save(this);
     }
 
     /**
@@ -134,13 +138,13 @@ public class Repository implements Serializable, Dumpable {
             // Compare blob with headBlob, if they are equal, then do not add the file to the staging area
             // and remove it from untracked files if it's there.
             if (contents.equals(headBlobContent)) {
-                staging.getStagedForRemoval().remove(filename);
+                staging.stagedForRemoval.remove(filename);
                 return;
             }
         }
 
         // Otherwise, add the file to the staging area and save
-        staging.getStagedForAddition().put(filename, Utils.sha1(contents));
+        staging.stagedForAddition.put(filename, Utils.sha1(contents));
     }
 
     /**
@@ -204,15 +208,15 @@ public class Repository implements Serializable, Dumpable {
         Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)), currentBranch);
 
         // The staging area must not be empty
-        if (staging.getStagedForAddition().isEmpty() && staging.getStagedForRemoval().isEmpty()) {
+        if (staging.stagedForAddition.isEmpty() && staging.stagedForRemoval.isEmpty()) {
             throw error(STAGING_AREA_EMPTY_ERR);
         }
 
         // Add the files staged for addition from parent
-        for (String filename : staging.getStagedForAddition().keySet()) {
+        for (String filename : staging.stagedForAddition.keySet()) {
             Map<String, String> tree = commit.getTree();
             if (tree.containsKey(filename)) {
-                String blobName = staging.getStagedForAddition().get(filename);
+                String blobName = staging.stagedForAddition.get(filename);
                 tree.put(filename, blobName);
             } else {
                 File file = Utils.join(CWD, filename);
@@ -221,7 +225,7 @@ public class Repository implements Serializable, Dumpable {
         }
 
         // Remove the files staged for removal from parent
-        for (String filename : staging.getStagedForRemoval()) {
+        for (String filename : staging.stagedForRemoval) {
             Map<String, String> tree = commit.getTree();
             tree.remove(filename);
         }
@@ -234,9 +238,9 @@ public class Repository implements Serializable, Dumpable {
 
         // Store any new or modified commit object into the file system and clean up the staging area
         commit.save();
-        staging.getStagedForAddition().clear();
-        staging.getStagedForRemoval().clear();
-        this.save();
+        staging.stagedForAddition.clear();
+        staging.stagedForRemoval.clear();
+        save(this);
     }
 
     /**
@@ -244,8 +248,8 @@ public class Repository implements Serializable, Dumpable {
      * @param filename
      */
     public void rm(String filename) {
-        Map<String, String> stagedForAddition = staging.getStagedForAddition();
-        Set<String> stagedForRemoval = staging.getStagedForRemoval();
+        Map<String, String> stagedForAddition = staging.stagedForAddition;
+        Set<String> stagedForRemoval = staging.stagedForRemoval;
         Map<String, String> tree = head.getTree();
 
         // If the file is neither staged nor tracked by the head commit, print the error message
@@ -340,7 +344,7 @@ public class Repository implements Serializable, Dumpable {
 
     }
 
-    // TODO: Per project description, the log() function will need to support "Merge", we are not there yet
+    // TODO: Per project specs, the log() function will need to support "Merge"
     public void log() {
         Commit ptr = head;
         while (ptr != null) {
@@ -416,7 +420,7 @@ public class Repository implements Serializable, Dumpable {
 
         System.out.println("=== Staged Files ===");
 
-        List<String> stagedFiles = new ArrayList<>(staging.getStagedForAddition().keySet());
+        List<String> stagedFiles = new ArrayList<>(staging.stagedForAddition.keySet());
         Collections.sort(stagedFiles);
 
         for (String stagedFile : stagedFiles) {
@@ -425,13 +429,13 @@ public class Repository implements Serializable, Dumpable {
         System.out.println();
 
         System.out.println("=== Removed Files ===");
-        for (String removedFile : staging.getStagedForRemoval()) {
+        for (String removedFile : staging.stagedForRemoval) {
             System.out.println(removedFile);
         }
         System.out.println();
 
         System.out.println("=== Modifications Not Staged For Commit ===");
-        // TODO
+        // TODO Extra credit
         System.out.println();
 
         System.out.println("=== Untracked Files ===");
@@ -511,17 +515,175 @@ public class Repository implements Serializable, Dumpable {
         Utils.writeContents(Utils.join(BRANCHES_DIR, branch), given);
     }
 
-    public void save() {
-        Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), this);
+    /**
+     * Merge the target branch to the current branch
+     * @param target branch to merge
+     */
+    public void merge(String target) {
+
+        // Find the split point: p1 -> current branch, p2 -> target branch
+        Commit p1 = head;
+        File branch = Utils.join(BRANCHES_DIR, target);
+        if (!branch.isFile()) {
+            throw Utils.error(BRANCH_NOT_EXIST);
+        }
+        Commit p2 = Commit.read(Utils.readContentsAsString(branch));
+        Commit split = findSplittingPoint(p1, p2);
+
+        // List all file names under these 3 commits: head, other, split
+        Commit other = Commit.read(Utils.readContentsAsString(branch));
+        Map<String, String> headTree = head.getTree();
+        Map<String, String> otherTree = other.getTree();
+        Map<String, String> splitTree = split.getTree();
+
+        Set<String> filenames = new HashSet<>(headTree.keySet());
+        filenames.addAll(split.getTree().keySet());
+        filenames.addAll(other.getTree().keySet());
+
+        for (String f : filenames) {
+            // Description of merge() control flow:
+            // For file x, commit HEAD and other, define 5 functions of return type boolean:
+
+            // 1.presentInHead(x):     is x in commit "HEAD"?
+            // 2.modifiedInHead(x):    has x been modified in current branch since the split?
+            // 3.presentInOther(x):    is x in commit "other"?
+            // 4.modifiedInOther(x):   has x been modified in target branch since the split?
+            // 5.presentInSplit(x):    is x in commit "split"?
+
+            // Result has 2^5 = 32 total permutations, only 12 are valid.
+            // =============================================================================
+            // case1: modified HEAD     TTTFT, TTFFT, TTFFF -> HEAD                 (3)
+            // case2: modified other    TFTTT, FFTTT, FFTTF -> other                (3)
+            // case3: HEAD/other/split  TFTFT -> HEAD/other/split                   (1)
+            // case3: unmodified HEAD   TFFFT -> remove                             (1)
+            // case4: unmodified other  FFTFT -> remain removed                     (1)
+            // case5: removed           FFFFT -> do nothing                         (1)
+            // case5: HEAD != other     TTTT- -> resolve conflict (OR do nothing)   (2)
+            // =============================================================================
+            // invalid:                 FFFFF, FT---, --FT-, etc.                   (20)
+
+            // modified HEAD and conflict
+            if (headTree.containsKey(f)) {
+                if (splitTree.containsKey(f)) {
+                    if (isModified(f, head, split)) {
+                        if (otherTree.containsKey(f) && isModified(f, other, split)) {
+                            resolveMergeConflict(f, head, other);
+                        }
+                        continue;
+                    }
+                } else {
+                    if (otherTree.containsKey(f)) {
+                        resolveMergeConflict(f, head, other);
+                    }
+                    continue;
+                }
+            }
+            // modified other
+            if (otherTree.containsKey(f) ) {
+                if (!splitTree.containsKey(f) || isModified(f, other, split)) {
+                    staging.stagedForAddition.put(f, other.getBlobName(f));
+                    other.writeFile(f);
+                    continue;
+                }
+            }
+            // unmodified
+            if (headTree.containsKey(f) && !otherTree.containsKey(f)) {
+                staging.stagedForRemoval.add(f);
+                Utils.join(CWD, f).delete();
+            }
+        }
+        // create merged commit
+        commit("Merged " + target + " into " + currentBranch + ".");
+    }
+
+    // TODO Implementation needed, pass if the two blobs are identical
+    private void resolveMergeConflict(String filename, Commit current, Commit target) {
+
+    }
+
+    /**
+     * Given commit p1 on branch b1, and commit p2 on branch b2.
+     * Finding the splitting point of b1 and b2 (Their latest common ancestor) if it exists.
+     * @param p1 HEAD commit of b1
+     * @param p2 HEAD commit of b2
+     * @return
+     */
+    private Commit findSplittingPoint(Commit p1, Commit p2) {
+        Commit split = null;
+        Set<String> seen = new HashSet<>();
+
+        assert p1 != null && p2 != null;
+        // Two pointers algorithm, note that if we store seen commits instead of UID,
+        // hashcode and equals method in Commit class are required to be overwritten
+        while (p1.getParent() != null && p2.getParent() != null) {
+            String cid1 = Utils.sha1((Object) serialize(p1));
+            String cid2 = Utils.sha1((Object) serialize(p2));
+            if (cid1.equals(cid2) || seen.contains(cid1)) {
+                split = p1;
+                break;
+            } else if (seen.contains(cid2)) {
+                split = p2;
+                break;
+            } else {
+                seen.addAll(Arrays.asList(cid1, cid2));
+            }
+            p1 = Commit.read(p1.getParent());
+            p2 = Commit.read(p2.getParent());
+        }
+        while (split == null && p1.getParent() != null) {
+            String cid1 = Utils.sha1((Object) serialize(p1));
+            if (seen.contains(cid1)) {
+                split = p1;
+                break;
+            }
+            seen.add(cid1);
+            p1 = Commit.read(p1.getParent());
+        }
+        while (split == null && p2.getParent() != null) {
+            String cid2 = Utils.sha1((Object) serialize(p2));
+            if (seen.contains(Utils.sha1((Object) serialize(p2)))) {
+                split = p2;
+                break;
+            }
+            seen.add(cid2);
+            p2 = Commit.read(p2.getParent());
+        }
+
+        if (split == null) split = new Commit(); // Split being null means the branches split at the initial commit
+        return split;
+    }
+
+    /**
+     * Given the filename, given commit and original commit,
+     * check if the file content in the given commit has been modified.
+     * @param f filename
+     * @param given given commit
+     * @param origin original commit
+     * @return If the file content has been modified
+     */
+    private boolean isModified(String f, Commit given, Commit origin) {
+        Map<String, String> givenTree = given.getTree();
+        Map<String, String> originTree = origin.getTree();
+        assert givenTree.containsKey(f) && originTree.containsKey(f);
+        return !(givenTree.get(f).equals(originTree.get(f)));
+    }
+
+    public static void save(Repository repo) {
+        if (repo == null) return;
+        Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), repo);
     }
 
     /**
      * Load the Repository object from .gitlet/ folder
-     * TODO: move this method to main?
+     *
      * @return
      */
     public static Repository load() {
-        return Utils.readObject(Utils.join(GITLET_DIR, "Repository"), Repository.class);
+        try {
+            return Utils.readObject(Utils.join(GITLET_DIR, "Repository"), Repository.class);
+        } catch (Exception e) {
+            throw Utils.error("Not in an initialized Gitlet directory.");
+        }
     }
 
     /**
@@ -551,7 +713,9 @@ public class Repository implements Serializable, Dumpable {
     // untracked = CWD - staged - (CWD & tracked)
     private List<String> getUntracked() {
         List<String> cwd = plainFilenamesIn(CWD);
-        List<String> staged = staging.getStagedFiles();
+        List<String> staged = new LinkedList<>(staging.stagedForAddition.keySet());
+        staged.addAll(staging.stagedForRemoval);
+        // List<String> staged = staging.getStagedFiles();
         List<String> tracked = head.getTrackedFiles();
         ArrayList<String> untracked = new ArrayList<>(plainFilenamesIn(CWD));
 
@@ -597,7 +761,7 @@ public class Repository implements Serializable, Dumpable {
         System.out.printf("commit timestamp: %s%n", head.getTimeStamp());
         System.out.printf("commit parent: %s%n", head.getParent());
         System.out.println("staged for addition");
-        for (Map.Entry<String, String> entry : staging.getStagedForAddition().entrySet()) {
+        for (Map.Entry<String, String> entry : staging.stagedForAddition.entrySet()) {
             System.out.printf("key: %s, value: %s%n", entry.getKey(), entry.getValue());
         }
     }

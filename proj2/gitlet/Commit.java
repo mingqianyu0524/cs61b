@@ -42,8 +42,7 @@ public class Commit implements Serializable {
      * Parent commit SHA1
      */
     private final String parent;
-
-    //TODO: add the branch name field
+    /* Branch of the commit */
     private String branch;
 
 
@@ -141,6 +140,20 @@ public class Commit implements Serializable {
      */
     public String getBlobName(String filename) {
         return this.tree.get(filename);
+    }
+
+    /**
+     * Write file under current working directory given the blob in the current commit tree.
+     * @param filename file name to overwrite
+     */
+    public void writeFile(String filename) {
+        String blobName = tree.get(filename);
+        try {
+            String blob = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blobName));
+            Utils.writeContents(Utils.join(CWD, filename), blob);
+        } catch (Exception e) {
+            throw error("No such blob with the given name exists!");
+        }
     }
 
     public Map<String, String> getTree() {
