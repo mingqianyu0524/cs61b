@@ -204,7 +204,7 @@ public class Repository implements Serializable, Dumpable {
         Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)));
 
         // The staging area must not be empty
-        if (staging.getStagedForAddition().isEmpty()) {
+        if (staging.getStagedForAddition().isEmpty() && staging.getStagedForRemoval().isEmpty()) {
             throw error(STAGING_AREA_EMPTY_ERR);
         }
 
@@ -235,6 +235,7 @@ public class Repository implements Serializable, Dumpable {
         // Store any new or modified commit object into the file system and clean up the staging area
         commit.save();
         staging.getStagedForAddition().clear();
+        staging.getStagedForRemoval().clear();
         this.save();
     }
 

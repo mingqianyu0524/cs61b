@@ -63,7 +63,11 @@ public class Main {
             case "add" -> {
                 validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
                 Repository repository = new Repository();
-                repository.add(args[1]);
+                try {
+                    repository.add(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
                 repository.save();
             }
             case "commit" -> {
