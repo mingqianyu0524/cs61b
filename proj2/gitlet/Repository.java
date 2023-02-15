@@ -62,8 +62,7 @@ public class Repository implements Serializable, Dumpable {
         // Check if the version-control system already exists
         Path path = Paths.get(".gitlet");
         if (Files.exists(path)) {
-            message(GITLET_EXISTS_ERR);
-            return;
+            throw Utils.error(GITLET_EXISTS_ERR);
         }
 
         // Initialize file directories for GitLet repository and set staging area
@@ -341,8 +340,7 @@ public class Repository implements Serializable, Dumpable {
             blob = commit.getBlobName(filename);
         }
         if (blob == null) {
-            Utils.message(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
-            return;
+            throw Utils.error(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
         }
 
         File bf = Utils.join(BLOBS_DIR, blob);

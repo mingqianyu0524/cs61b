@@ -53,7 +53,11 @@ public class Main {
             case "init" -> {
                 validateArgs(args, 1, firstArg);
                 Repository repository = new Repository();
-                repository.init();
+                try {
+                    repository.init();
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
                 repository.save();
             }
             case "add" -> {
@@ -63,9 +67,13 @@ public class Main {
                 repository.save();
             }
             case "commit" -> {
-                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s]+");
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
                 Repository repository = new Repository();
-                repository.commit(args[1]);
+                try {
+                    repository.commit(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
                 repository.save();
             }
             case "log" -> {
