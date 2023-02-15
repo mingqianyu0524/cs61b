@@ -80,6 +80,16 @@ public class Main {
                 repository.status();
                 repository.save();
             }
+            case "rm" -> {
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s]+");
+                Repository repository = new Repository();
+                try {
+                    repository.rm(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
+                repository.save();
+            }
             case "checkout" -> {
                 Repository repository = new Repository();
                 try {validateArgs(args, 0, "checkout\\s*[A-Fa-f0-9]*\\s*[--]*\\s*[-_.A-Za-z0-9\\s]+");}

@@ -243,7 +243,6 @@ public class Repository implements Serializable, Dumpable {
      * Remove the file from the repository
      * @param filename
      */
-    // TODO: Conduct unit test?
     public void rm(String filename) {
         Map<String, String> stagedForAddition = staging.getStagedForAddition();
         Set<String> stagedForRemoval = staging.getStagedForRemoval();
