@@ -49,61 +49,70 @@ public class Main {
         //  (i.e., one containing a .gitlet subdirectory), but is not in such a directory,
         //  print the message Not in an initialized Gitlet directory.
 
+        Repository repository = new Repository();
+
         switch (firstArg) {
             case "init" -> {
                 validateArgs(args, 1, firstArg);
-                Repository repository = new Repository();
                 try {
                     repository.init();
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
-                repository.save();
             }
             case "add" -> {
                 validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
-                Repository repository = new Repository();
+                repository = new Repository(); // TODO: Add load() to Repository and returns an existing repository
                 try {
                     repository.add(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
-                repository.save();
             }
             case "commit" -> {
                 validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
-                Repository repository = new Repository();
+                repository = new Repository();
                 try {
                     repository.commit(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
-                repository.save();
             }
             case "log" -> {
                 validateArgs(args, 1, firstArg);
-                Repository repository = new Repository();
+                repository = new Repository();
                 repository.log();
-                repository.save();
+            }
+            case "global-log" -> {
+                validateArgs(args, 1, firstArg);
+                repository = new Repository();
+                repository.globalLog();
+            }
+            case "find" -> {
+                validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
+                repository = new Repository();
+                try {
+                    repository.find(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
             }
             case "status" -> {
                 validateArgs(args, 1, firstArg);
-                Repository repository = new Repository();
+                repository = new Repository();
                 repository.status();
-                repository.save();
             }
             case "rm" -> {
                 validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9]+");
-                Repository repository = new Repository();
+                repository = new Repository();
                 try {
                     repository.rm(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }
-                repository.save();
             }
             case "checkout" -> {
-                Repository repository = new Repository();
+                repository = new Repository();
                 try {validateArgs(args, 0, "checkout\\s*[A-Fa-f0-9]*\\s*[--]*\\s*[-_.A-Za-z0-9\\s]+");}
                 catch (GitletException e) {
                     Utils.message(e.getMessage());
@@ -114,8 +123,6 @@ public class Main {
                         repository.checkout(true, null, null, args[1]);
                     } catch (GitletException e) {
                         Utils.message(e.getMessage());
-                    } finally {
-                        repository.save();
                     }
                 }
                 if (args.length == 3) {
@@ -123,8 +130,6 @@ public class Main {
                         repository.checkout(false, null, args[2], null);
                     } catch (GitletException e) {
                         Utils.message(e.getMessage());
-                    } finally {
-                        repository.save();
                     }
                 }
                 if (args.length == 4) {
@@ -133,14 +138,11 @@ public class Main {
                     } catch (GitletException e) {
                         // TODO: bug somewhere near (test 29) - print the error msg twice somehow?
                         Utils.message(e.getMessage());
-                    } finally {
-                        repository.save();
                     }
                 }
             }
-            default -> {
-                System.out.println("No command with that name exists.");
-            }
+            default -> Utils.message("No command with that name exists.");
         }
+        repository.save();
     }
 }

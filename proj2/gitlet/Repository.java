@@ -371,6 +371,44 @@ public class Repository implements Serializable, Dumpable {
     }
 
     /**
+     * Description: Like log, except displays information about all commits ever made.
+     * The order of the commits does not matter.
+     */
+    public void globalLog() {
+        for (String commitID : Objects.requireNonNull(plainFilenamesIn(COMMITS_DIR))) {
+            Commit commit = Commit.read(commitID);
+            System.out.println("===");
+            System.out.printf("commit %s%n", commitID);
+            System.out.printf("Date: %s%n", commit.getTimeStamp());
+            System.out.println(commit.getMessage());
+            System.out.println();
+        }
+    }
+
+    /**
+     * Description: Prints out the ids of all commits that have the given commit message, one per line.
+     * If there are multiple such commits, it prints the ids out on separate lines.
+     * The commit message is a single operand; to indicate a multiword message,
+     * put the operand in quotation marks, as for the commit command below.
+     *
+     * @param given given message
+     */
+    public void find(String given) {
+        boolean res = false;
+        for (String commitID : Objects.requireNonNull(plainFilenamesIn(COMMITS_DIR))) {
+            Commit commit = Commit.read(commitID);
+            String msg = commit.getMessage();
+            if (given.equals(msg)) {
+                res = true;
+                System.out.println(commitID);
+            }
+        }
+        if (!res) {
+            throw Utils.error("Found no commit with that message.");
+        }
+    }
+
+    /**
      * Description: Displays what branches currently exist, and marks the current branch with a *.
      * Also displays what files have been staged for addition or removal.
      * An example of the exact format it should follow is as follows.
