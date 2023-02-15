@@ -201,7 +201,7 @@ public class Repository implements Serializable, Dumpable {
 
         // Clone the HEAD commit, modify its message and timestamp according to user input
         // Most importantly, set the parent of this new commit to the original HEAD commit
-        Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)));
+        Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)), currentBranch);
 
         // The staging area must not be empty
         if (staging.getStagedForAddition().isEmpty() && staging.getStagedForRemoval().isEmpty()) {
@@ -300,10 +300,6 @@ public class Repository implements Serializable, Dumpable {
             if (branch.equals(currentBranch)) {
                 throw error(CHECKOUT_CURRENT_BRANCH);
             }
-            List<String> untracked = this.getUntracked();
-            if (!untracked.isEmpty()) {
-                throw error(UNTRACKED_ERR);
-            }
 
             // Retrieve all files from the checkout branch and store them under CWD
             try {
@@ -311,17 +307,10 @@ public class Repository implements Serializable, Dumpable {
             } catch (IllegalArgumentException e) {
                 throw error(BRANCH_NOT_EXIST);
             }
-            // Delete all files under the current working directory
-            cleanDirectory();
 
+            // Checkout commit
             Commit commit = Commit.read(commitID);
-
-            for (String fn : commit.getTree().keySet()) {
-                // Read the blobs in the commit tree, and write to the files in CWD
-                String blob = commit.getBlobName(fn);
-                String c = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blob));
-                writeContents(Utils.join(CWD, fn), c);
-            }
+            checkoutCommit(commit);
 
             // Reset the current branch, HEAD pointer and staging area
             currentBranch = branch;
@@ -446,7 +435,9 @@ public class Repository implements Serializable, Dumpable {
         System.out.println();
 
         System.out.println("=== Untracked Files ===");
-        // TODO
+        for (String untrackedFile : this.getUntracked()) {
+            System.out.println(untrackedFile);
+        }
         System.out.println();
     }
 
@@ -491,6 +482,33 @@ public class Repository implements Serializable, Dumpable {
         if (branchName.isEmpty()) throw error("A branch with that name does not exist.");
         // Delete branch
         Utils.join(BRANCHES_DIR, branchName).delete();
+    }
+
+    /**
+     * Checks out all the files tracked by the given commit.
+     * Removes tracked files that are not present in that commit.
+     * Also moves the current branch’s head to that commit node.
+     *
+     * The [commit id] may be abbreviated as for checkout. The staging area is cleared.
+     * The command is essentially checkout of an arbitrary commit that also changes the current branch head.
+     *
+     * @param given
+     */
+
+    // TODO: Debug 24, do we keep commit ${1} after resetting to ${2}?
+
+    public void reset(String given) {
+        List<String> untracked = this.getUntracked();
+        if (!untracked.isEmpty()) {
+            throw error(UNTRACKED_ERR);
+        }
+        Commit commit = Commit.read(given);
+        String branch = commit.getBranch();
+        checkoutCommit(commit);
+        this.staging = new Staging();
+        this.head = commit;
+        // Set the branch HEAD as well
+        Utils.writeContents(Utils.join(BRANCHES_DIR, branch), given);
     }
 
     public void save() {
@@ -545,6 +563,29 @@ public class Repository implements Serializable, Dumpable {
         }
 
         return untracked;
+    }
+
+    /**
+     * Helper method to check out files in a given commit. (Used both in checkout and reset)
+     * @param commit
+     */
+    private void checkoutCommit(Commit commit) {
+        // Make sure there aren't untracked files first
+        List<String> untracked = this.getUntracked();
+        if (!untracked.isEmpty()) {
+            throw error(UNTRACKED_ERR);
+        }
+
+        // Delete all files under the current working directory
+        cleanDirectory();
+
+        // Checkout tracked files in the given commit
+        for (String fn : commit.getTree().keySet()) {
+            // Read the blobs in the commit tree, and write to the files in CWD
+            String blob = commit.getBlobName(fn);
+            String c = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blob));
+            writeContents(Utils.join(CWD, fn), c);
+        }
     }
 
     @Override

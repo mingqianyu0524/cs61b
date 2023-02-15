@@ -113,7 +113,7 @@ public class Main {
             }
             case "checkout" -> {
                 repository = new Repository();
-                try {validateArgs(args, 0, "checkout\\s*[A-Fa-f0-9]*\\s*[--]*\\s*[-_.A-Za-z0-9\\s]+");}
+                try {validateArgs(args, 0, firstArg + "\\s*[A-Fa-f0-9]*\\s*[--]*\\s*[-_.A-Za-z0-9\\s]+");}
                 catch (GitletException e) {
                     Utils.message(e.getMessage());
                     return;
@@ -154,6 +154,15 @@ public class Main {
                 repository = new Repository();
                 try {
                     repository.rmBranch(args[1]);
+                } catch (GitletException e) {
+                    Utils.message(e.getMessage());
+                }
+            }
+            case "reset" -> {
+                validateArgs(args, 2, firstArg + "\\s*[A-Fa-f0-9]*");
+                repository = new Repository();
+                try {
+                    repository.reset(args[1]);
                 } catch (GitletException e) {
                     Utils.message(e.getMessage());
                 }

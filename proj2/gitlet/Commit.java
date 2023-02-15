@@ -43,6 +43,10 @@ public class Commit implements Serializable {
      */
     private final String parent;
 
+    //TODO: add the branch name field
+    private String branch;
+
+
     /**
      * Create initial commit object
      */
@@ -51,13 +55,15 @@ public class Commit implements Serializable {
         setTimestamp(true);
         this.tree = new HashMap<>();
         this.parent = null;
+        this.branch = "master";
     }
 
-    public Commit(String message, Map<String, String> tree, String parent) {
+    public Commit(String message, Map<String, String> tree, String parent, String branch) {
         this.message = message;
         setTimestamp(false);
         this.tree = tree;
         this.parent = parent;
+        this.branch = branch;
     }
 
     /** Serialize the commit and store into repository, return the SHA-1 of the commit object */
@@ -141,5 +147,7 @@ public class Commit implements Serializable {
         return tree;
     }
 
-
+    public String getBranch() {
+        return this.branch;
+    }
 }
