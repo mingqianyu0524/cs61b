@@ -45,7 +45,6 @@ public class Commit implements Serializable {
     /* Branch of the commit */
     private String branch;
 
-
     /**
      * Create initial commit object
      */
@@ -152,7 +151,7 @@ public class Commit implements Serializable {
             String blob = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blobName));
             Utils.writeContents(Utils.join(CWD, filename), blob);
         } catch (Exception e) {
-            throw error("No such blob with the given name exists!");
+            throw error("A branch with that name does not exist.");
         }
     }
 

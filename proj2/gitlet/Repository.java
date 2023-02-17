@@ -520,18 +520,42 @@ public class Repository implements Serializable, Dumpable {
      * @param target branch to merge
      */
     public void merge(String target) {
+        // Handle exceptions
+        if (currentBranch.equals(target)) {
+            throw error("Cannot merge a branch with itself.");
+        }
+
+        List<String> untracked = this.getUntracked();
+        if (!untracked.isEmpty()) {
+            throw error(UNTRACKED_ERR);
+        }
+
+        if (!staging.stagedForAddition.isEmpty() || !staging.stagedForRemoval.isEmpty()) {
+            throw error("You have uncommitted changes.");
+        }
+
+        File branch = Utils.join(BRANCHES_DIR, target);
+        if (!branch.isFile()) {
+            throw Utils.error("A branch with that name does not exist.");
+        }
 
         // Find the split point: p1 -> current branch, p2 -> target branch
         Commit p1 = head;
-        File branch = Utils.join(BRANCHES_DIR, target);
-        if (!branch.isFile()) {
-            throw Utils.error(BRANCH_NOT_EXIST);
-        }
         Commit p2 = Commit.read(Utils.readContentsAsString(branch));
         Commit split = findSplittingPoint(p1, p2);
 
-        // List all file names under these 3 commits: head, other, split
         Commit other = Commit.read(Utils.readContentsAsString(branch));
+
+        // Special merge cases
+        if (Utils.sha1((Object) serialize(other)).equals(Utils.sha1((Object) serialize(split)))) {
+            throw error("Given branch is an ancestor of the current branch.");
+        }
+        if (Utils.sha1((Object) serialize(head)).equals(Utils.sha1((Object) serialize(split)))) {
+            checkoutCommit(other);
+            throw error("Current branch fast-forwarded.");
+        }
+
+        // List all file names under these 3 commits: head, other, split
         Map<String, String> headTree = head.getTree();
         Map<String, String> otherTree = other.getTree();
         Map<String, String> splitTree = split.getTree();
