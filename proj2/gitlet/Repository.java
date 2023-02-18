@@ -647,7 +647,7 @@ public class Repository implements Serializable, Dumpable {
         if (!currentContent.equals(targetContent)) {
             // Otherwise, staging the file
             String blobName = currentContent.isEmpty() ? target.getBlobName(filename) : current.getBlobName(filename);
-            String mergeConflict = "<<<<<<< HEAD\n" + currentContent + "=======\n" + targetContent + ">>>>>>>";
+            String mergeConflict = "<<<<<<< HEAD\n" + currentContent + "=======\n" + targetContent + ">>>>>>>\n";
             Utils.writeContents(Utils.join(BLOBS_DIR, blobName), mergeConflict);
             staging.stagedForAddition.put(filename, blobName);
             if (currentContent.isEmpty()) {
