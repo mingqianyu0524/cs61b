@@ -564,6 +564,8 @@ public class Repository implements Serializable, Dumpable {
         filenames.addAll(split.getTree().keySet());
         filenames.addAll(other.getTree().keySet());
 
+        boolean encounteredConflict = false;
+
         for (String f : filenames) {
             // Description of merge() control flow:
             // For file x, commit HEAD and other, define 5 functions of return type boolean:
@@ -591,20 +593,28 @@ public class Repository implements Serializable, Dumpable {
                 if (splitTree.containsKey(f)) {
                     if (isModified(f, head, split)) {
                         if (otherTree.containsKey(f) && isModified(f, other, split)) {
-                            resolveMergeConflict(f, head, other);
+                            encounteredConflict = resolveMergeConflict(f, head, other, false);
+                        }
+                        if (!otherTree.containsKey(f)) {
+                            encounteredConflict = resolveMergeConflict(f, head, other, false);
                         }
                         continue;
                     }
                 } else {
                     if (otherTree.containsKey(f)) {
-                        resolveMergeConflict(f, head, other);
+                        encounteredConflict = resolveMergeConflict(f, head, other, false);
                     }
                     continue;
                 }
             }
             // modified other
             if (otherTree.containsKey(f) ) {
+
                 if (!splitTree.containsKey(f) || isModified(f, other, split)) {
+                    if (splitTree.containsKey(f) && !headTree.containsKey(f)) {
+                        encounteredConflict = resolveMergeConflict(f, head, other, false);
+                        continue;
+                    }
                     staging.stagedForAddition.put(f, other.getBlobName(f));
                     other.writeFile(f);
                     continue;
@@ -616,13 +626,38 @@ public class Repository implements Serializable, Dumpable {
                 Utils.join(CWD, f).delete();
             }
         }
+        if (encounteredConflict) {
+            message("Encountered a merge conflict.");
+        }
         // create merged commit
         commit("Merged " + target + " into " + currentBranch + ".");
     }
 
-    // TODO Implementation needed, pass if the two blobs are identical
-    private void resolveMergeConflict(String filename, Commit current, Commit target) {
+    private boolean resolveMergeConflict(String filename, Commit current, Commit target, boolean encountered) {
+        String currentContent = "", targetContent = "";
 
+        // Read only if both current and target commit contains the file
+        if (current.getTree().containsKey(filename)) {
+            currentContent = Utils.readContentsAsString(Utils.join(BLOBS_DIR, current.getBlobName(filename)));
+        }
+        if (target.getTree().containsKey(filename)) {
+            targetContent = Utils.readContentsAsString(Utils.join(BLOBS_DIR, target.getBlobName(filename)));
+        }
+
+        if (!currentContent.equals(targetContent)) {
+            // Otherwise, staging the file
+            String blobName = currentContent.isEmpty() ? target.getBlobName(filename) : current.getBlobName(filename);
+            String mergeConflict = "<<<<<<< HEAD\n" + currentContent + "=======\n" + targetContent + ">>>>>>>";
+            Utils.writeContents(Utils.join(BLOBS_DIR, blobName), mergeConflict);
+            staging.stagedForAddition.put(filename, blobName);
+            if (currentContent.isEmpty()) {
+                target.writeFile(filename);
+            } else {
+                current.writeFile(filename);
+            }
+            encountered = true;
+        }
+        return encountered;
     }
 
     /**

@@ -72,7 +72,7 @@ public class Main {
             }
             case "commit" -> {
                 try {
-                    validateArgs(args, 2, firstArg + "[-_.A-Za-z0-9\\s*]*");
+                    validateArgs(args, 2, firstArg + "[-_,.A-Za-z0-9\\s*]*");
                     repository = Repository.load();
                     repository.commit(args[1]);
                 } catch (GitletException e) {
