@@ -117,13 +117,13 @@ public class Repository implements Serializable, Dumpable {
         }
         String contents = Utils.readContentsAsString(file);
 
-        // store the blob (do NOT use the file name but sha1 hash of the content to avoid duplicates)
+        // store the blob (use sha1 hash of the content to avoid duplicates)
         File blob = join(BLOBS_DIR, Utils.sha1(contents));
         Utils.writeContents(blob, contents);
 
         // Compare the file to the one in the current head commit
-        Commit head = this.head;
-        String headBlobName = head.getBlobName(filename);
+        Commit commit = this.head;
+        String headBlobName = commit.getBlobName(filename);
         if (headBlobName != null) {
             String headBlobContent = Utils.readContentsAsString(join(BLOBS_DIR, headBlobName));
             // Compare blob with headBlob,
@@ -171,11 +171,12 @@ public class Repository implements Serializable, Dumpable {
         }
 
         // Read from the file system the HEAD commit object and the staging area
-        Commit head = this.head;
+        Commit headCommit = this.head;
 
         // Clone the HEAD commit, modify its message and timestamp according to user input
         // Most importantly, set the parent of this new commit to the original HEAD commit
-        Commit commit = new Commit(message, head.getTree(), currentBranch, head.getCommitUID());
+        Commit commit = new Commit(
+                message, headCommit.getTree(), currentBranch, headCommit.getCommitUID());
         if (!branchToMerge.isEmpty()) {
             String branchHead = Utils.readContentsAsString(Utils.join(BRANCHES_DIR, branchToMerge));
             commit.addParent(branchToMerge, branchHead);
@@ -212,7 +213,8 @@ public class Repository implements Serializable, Dumpable {
             writeContents(branch, commit.getCommitUID());
         }
 
-        // Store any new or modified commit object into the file system and clean up the staging area
+        // Store any new or modified commit object into the file system
+        // and clean up the staging area
         commit.save();
         staging.stagedForAddition.clear();
         staging.stagedForRemoval.clear();
@@ -274,7 +276,7 @@ public class Repository implements Serializable, Dumpable {
      *
      */
 
-    public void checkout( boolean isBranch, String commitID, String filename, String branch) {
+    public void checkout(boolean isBranch, String commitID, String filename, String branch) {
 
         // Checkout branch
         if (isBranch) {
@@ -311,7 +313,7 @@ public class Repository implements Serializable, Dumpable {
             blob = commit.getBlobName(filename);
         }
         if (blob == null) {
-            throw Utils.error(FILE_NOT_IN_COMMIT); // do not move the exception handling to getBlobName()
+            throw Utils.error(FILE_NOT_IN_COMMIT);
         }
 
         File bf = Utils.join(BLOBS_DIR, blob);
@@ -475,7 +477,9 @@ public class Repository implements Serializable, Dumpable {
                 break;
             }
         }
-        if (branchName.isEmpty()) throw error("A branch with that name does not exist.");
+        if (branchName.isEmpty()) {
+            throw error("A branch with that name does not exist.");
+        }
 
         // Trace back from branch HEAD and update all parents commit objects
         File branch = Utils.join(BRANCHES_DIR, branchName);
@@ -576,8 +580,21 @@ public class Repository implements Serializable, Dumpable {
         filenames.addAll(split.getTree().keySet());
         filenames.addAll(other.getTree().keySet());
 
-        boolean encounteredConflict = false;
+        boolean encounteredConflict =
+                mergeHelper(filenames, other, split, headTree, otherTree, splitTree);
 
+        if (encounteredConflict) {
+            message("Encountered a merge conflict.");
+        }
+        // create merged commit
+        commit("Merged " + target + " into " + currentBranch + ".", target);
+    }
+
+    private boolean mergeHelper(Set<String> filenames, Commit other, Commit split,
+                                Map<String, String> headTree,
+                                Map<String, String> otherTree,
+                                Map<String, String> splitTree) {
+        boolean encounteredConflict = false;
         for (String f : filenames) {
             // Description of merge() control flow:
             // For file x, commit HEAD and other, define 5 functions of return type boolean:
@@ -620,7 +637,7 @@ public class Repository implements Serializable, Dumpable {
                 }
             }
             // modified other
-            if (otherTree.containsKey(f) ) {
+            if (otherTree.containsKey(f)) {
 
                 if (!splitTree.containsKey(f) || isModified(f, other, split)) {
                     if (splitTree.containsKey(f) && !headTree.containsKey(f)) {
@@ -638,28 +655,33 @@ public class Repository implements Serializable, Dumpable {
                 Utils.join(CWD, f).delete();
             }
         }
-        if (encounteredConflict) {
-            message("Encountered a merge conflict.");
-        }
-        // create merged commit
-        commit("Merged " + target + " into " + currentBranch + ".", target);
+        return encounteredConflict;
     }
 
-    private boolean resolveMergeConflict(String filename, Commit current, Commit target, boolean encountered) {
+    private boolean resolveMergeConflict(
+            String filename, Commit current, Commit target, boolean encountered) {
         String currentContent = "", targetContent = "";
 
         // Read only if both current and target commit contains the file
         if (current.getTree().containsKey(filename)) {
-            currentContent = Utils.readContentsAsString(Utils.join(BLOBS_DIR, current.getBlobName(filename)));
+            currentContent = Utils.readContentsAsString(
+                    Utils.join(BLOBS_DIR, current.getBlobName(filename)));
         }
         if (target.getTree().containsKey(filename)) {
-            targetContent = Utils.readContentsAsString(Utils.join(BLOBS_DIR, target.getBlobName(filename)));
+            targetContent = Utils.readContentsAsString(
+                    Utils.join(BLOBS_DIR, target.getBlobName(filename)));
         }
 
         if (!currentContent.equals(targetContent)) {
             // Otherwise, staging the file
-            String blobName = currentContent.isEmpty() ? target.getBlobName(filename) : current.getBlobName(filename);
-            String mergeConflict = "<<<<<<< HEAD\n" + currentContent + "=======\n" + targetContent + ">>>>>>>\n";
+            String blobName = currentContent.isEmpty() ?
+                    target.getBlobName(filename) : current.getBlobName(filename);
+            String mergeConflict =
+                    "<<<<<<< HEAD\n"
+                    + currentContent
+                    + "=======\n"
+                    + targetContent
+                    + ">>>>>>>\n";
             Utils.writeContents(Utils.join(BLOBS_DIR, blobName), mergeConflict);
             staging.stagedForAddition.put(filename, blobName);
             if (currentContent.isEmpty()) {
@@ -837,7 +859,8 @@ public class Repository implements Serializable, Dumpable {
         System.out.printf("commit msg: %s%n", head.getMessage());
         System.out.printf("commit timestamp: %s%n", head.getTimeStamp());
         for (String branch : head.getBranches()) {
-            System.out.printf("commit is on branch %s, parent: %s%n", branch, head.getParent(branch));
+            System.out.printf("commit is on branch %s, parent: %s%n",
+                    branch, head.getParent(branch));
         }
         System.out.println("staged for addition");
         for (Map.Entry<String, String> entry : staging.stagedForAddition.entrySet()) {

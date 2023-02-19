@@ -150,9 +150,11 @@ public class Commit implements Serializable {
     public Commit branch(String newBranch, String currentBranch) {
         try {
             this.parents.put(newBranch, this.parents.get(currentBranch));
-        } catch (UnsupportedOperationException | ClassCastException |
-                NullPointerException | IllegalArgumentException e) {
-           throw error("Error creating new branch");
+        } catch (UnsupportedOperationException
+                | ClassCastException
+                | NullPointerException
+                | IllegalArgumentException e) {
+            throw error("Error creating new branch");
         }
         this.save();
         return this;
