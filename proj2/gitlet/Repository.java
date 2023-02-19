@@ -51,16 +51,16 @@ public class Repository implements Serializable, Dumpable {
     /**
      * Creates a new Gitlet version-control system in the current directory.
      * This system will automatically start with one commit:
-     * a commit that contains no files and has the commit message initial commit (just like that, with no punctuation).
+     * a commit that contains no files and has the commit message initial commit.
      *
      * It will have a single branch: master, which initially points to this initial commit,
-     * and master will be the current branch. The timestamp for this initial commit will be 00:00:00 UTC,
-     * Thursday, 1 January 1970 in whatever format you choose for dates (this is called “The (Unix) Epoch”,
-     * represented internally by the time 0.)
+     * and master will be the current branch. The timestamp for this initial commit will be
+     * 00:00:00 UTC, Thursday, 1 January 1970 in whatever format you choose for dates
+     * (this is called “The (Unix) Epoch”, represented internally by the time 0.)
      *
-     * Since the initial commit in all repositories created by Gitlet will have exactly the same content,
-     * it follows that all repositories will automatically share this commit (they will all have the same UID) and all
-     * commits in all repositories will trace back to it.
+     * Since the initial commit in all repositories will have exactly the same content,
+     * it follows that all repositories will automatically share this commit
+     * and all commits in all repositories will trace back to it.
      */
     public void init() {
         // Check if the version-control system already exists
@@ -89,38 +89,29 @@ public class Repository implements Serializable, Dumpable {
 
     /**
      *
-     * Lazy loading and caching: Let’s say you store the state of which files have been gitlet added to your repo
-     * in your file system.
-     *
-     * Lazy loading: The first time you want that list of files when you run your Java program, you need to load
-     * it from disk.
-     *
-     * Caching: The second time you need that list of files in the same run of the Java program,
-     * don’t load it from disk again, but use the same list as you loaded before. If you need to,
-     * you can then add multiple files to that list object in your Java program.
-     *
-     * Writing back: When your Java program is finished, at the very end, since you had loaded that list of files and
-     * may have modified it, write it back to your file system.
-     *
      * Adds a copy of the file as it currently exists to the staging area.
      *
      * For this reason, adding a file is also called staging the file for addition.
      *
-     * Staging an already-staged file overwrites the previous entry in the staging area with the new contents.
-     * The staging area should be somewhere in .gitlet.
+     * Staging an already-staged file overwrites the previous entry in the staging area
+     * with the new contents. The staging area should be somewhere in .gitlet.
      *
-     * If the current working version of the file is identical to the version in the current commit,
-     * do not stage it to be added, and remove it from the staging area if it is
-     * already there (as can happen when a file is changed, added, and then changed back to it’s original version).
+     * If the current working version of the file is identical to the version
+     * in the current commit, do not stage it to be added,
+     * and remove it from the staging area if it is
+     * already there (as can happen when a file is changed, added,
+     * and then changed back to it’s original version).
      *
-     * The file will no longer be staged for removal (see gitlet rm), if it was at the time of the command.
+     * The file will no longer be staged for removal (see gitlet rm),
+     * if it was at the time of the command.
      *
      * @param filename Name of the file to be added to the staging area
      */
     public void add(String filename) {
 
         File file = join(CWD, filename);
-        // The initial version of gitlet only allows adding plain file, maybe in later version it will support dir too
+        // The initial version of gitlet only allows adding plain file,
+        // maybe in later version it will support dir too
         if (!file.isFile()) {
             throw error(FILE_NOT_EXIST_ERR);
         }
@@ -135,7 +126,8 @@ public class Repository implements Serializable, Dumpable {
         String headBlobName = head.getBlobName(filename);
         if (headBlobName != null) {
             String headBlobContent = Utils.readContentsAsString(join(BLOBS_DIR, headBlobName));
-            // Compare blob with headBlob, if they are equal, then do not add the file to the staging area
+            // Compare blob with headBlob,
+            // if they are equal, then do not add the file to the staging area
             // and remove it from untracked files if it's there.
             if (contents.equals(headBlobContent)) {
                 staging.stagedForRemoval.remove(filename);
@@ -148,49 +140,27 @@ public class Repository implements Serializable, Dumpable {
     }
 
     /**
-     * Saves a snapshot of tracked files in the current commit and staging area, so they can be restored at a later time,
+     * Saves a snapshot of tracked files in the current commit and staging area,
+     * so they can be restored at a later time,
      * creating a new commit. The commit is said to be tracking the saved files.
-     * By default, each commit’s snapshot of files will be exactly the same as its parent commit’s snapshot of files;
+     * By default, each commit’s snapshot of files will be exactly the same as
+     * its parent commit’s snapshot of files;
      * it will keep versions of files exactly as they are, and not update them.
      *
-     * A commit will only update the contents of files it is tracking that have been staged for addition at the time
-     * of commit, in which case the commit will now include the version of the file that was staged instead of the
-     * version it got from its parent. A commit will save and start tracking any files that were staged for addition
+     * A commit will only update the contents of files it is tracking that have been
+     * staged for addition at the time of commit,
+     * in which case the commit will now include the version of the file that was
+     * staged instead of the version it got from its parent.
+     * A commit will save and start tracking any files that were staged for addition
      * but weren’t tracked by its parent.
      *
-     * Finally, files tracked in the current commit may be untracked in the new commit as a result being staged
-     * for removal by the rm command (below).
+     * Finally, files tracked in the current commit may be untracked in the new
+     * commit as a result being staged for removal by the rm command (below).
      *
      * The bottom line: By default a commit has the same file contents as its parent.
      * Files staged for addition and removal are the updates to the commit.
      * Of course, the date (and likely the message) will also different from the parent.
      *
-     * Some additional points about commit:
-     *
-     * The staging area is cleared after a commit.
-     *
-     * The commit command never adds, changes, or removes files in the working directory
-     * (other than those in the .gitlet directory). The rm command will remove such files,
-     * as well as staging them for removal, so that they will be untracked after a commit.
-     *
-     * Any changes made to files after staging for addition or removal are ignored by the commit command,
-     * which only modifies the contents of the .gitlet directory. For example, if you remove a tracked file
-     * using the Unix rm command (rather than Gitlet’s command of the same name), it has no effect on the next commit,
-     * which will still contain the (now deleted) version of the file.
-     *
-     * After the commit command, the new commit is added as a new node in the commit tree.
-     *
-     * The commit just made becomes the “current commit”, and the head pointer now points to it.
-     * The previous head commit is this commit’s parent commit.
-     *
-     * Each commit should contain the date and time it was made.
-     *
-     * Each commit has a log message associated with it that describes the changes to the files in the commit.
-     * This is specified by the user. The entire message should take up only one entry in the array args that is
-     * passed to main. To include multiword messages, you’ll have to surround them in quotes.
-     *
-     * Each commit is identified by its SHA-1 id, which must include the file (blob) references of its files,
-     * parent reference, log message, and commit time.
      *
      * @param message
      */
@@ -277,11 +247,9 @@ public class Repository implements Serializable, Dumpable {
     }
 
     /**
-     * Descriptions:
      *
-     * `java gitlet.Main checkout -- [file name]`
-     *
-     * Takes the version of the file as it exists in the head commit and puts it in the working directory,
+     * Takes the version of the file as it exists in the head commit
+     * and puts it in the working directory,
      * overwriting the version of the file that’s already there if there is one.
      * The new version of the file is not staged.
      *
@@ -294,12 +262,15 @@ public class Repository implements Serializable, Dumpable {
      *
      * `java gitlet.Main checkout [branch name]`
      *
-     * Takes all files in the commit at the head of the given branch, and puts them in the working directory,
+     * Takes all files in the commit at the head of the given branch,
+     * and puts them in the working directory,
      * overwriting the versions of the files that are already there if they exist.
-     * Also, at the end of this command, the given branch will now be considered the current branch (HEAD).
+     * Also, at the end of this command, the given branch will now
+     * be considered the current branch (HEAD).
      *
-     * Any files that are tracked in the current branch but are not present in the checked-out branch are deleted.
-     * The staging area is cleared, unless the checked-out branch is the current branch (see Failure cases below).
+     * Any files that are tracked in the current branch but are not present
+     * in the checked-out branch are deleted.
+     * The staging area is cleared, unless the checked-out branch is the current branch.
      *
      */
 
@@ -350,7 +321,6 @@ public class Repository implements Serializable, Dumpable {
 
     }
 
-    // TODO: add merge support
     public void log() {
         Commit ptr = head;
         while (ptr != null) {
@@ -395,7 +365,8 @@ public class Repository implements Serializable, Dumpable {
     }
 
     /**
-     * Description: Prints out the ids of all commits that have the given commit message, one per line.
+     * Prints out the ids of all commits that have the given commit message,
+     * one per line.
      * If there are multiple such commits, it prints the ids out on separate lines.
      * The commit message is a single operand; to indicate a multiword message,
      * put the operand in quotation marks, as for the commit command below.
@@ -418,7 +389,8 @@ public class Repository implements Serializable, Dumpable {
     }
 
     /**
-     * Description: Displays what branches currently exist, and marks the current branch with a *.
+     * Description: Displays what branches currently exist,
+     * and marks the current branch with a *.
      * Also displays what files have been staged for addition or removal.
      * An example of the exact format it should follow is as follows.
      */
@@ -451,7 +423,6 @@ public class Repository implements Serializable, Dumpable {
         System.out.println();
 
         System.out.println("=== Modifications Not Staged For Commit ===");
-        // TODO Extra credit
         System.out.println();
 
         System.out.println("=== Untracked Files ===");
@@ -463,9 +434,11 @@ public class Repository implements Serializable, Dumpable {
 
     /**
      * Creates a new branch with the given name, and points it at the current head commit.
-     * A branch is nothing more than a name for a reference (a SHA-1 identifier) to a commit node.
-     * This command does NOT immediately switch to the newly created branch (just as in real Git).
-     * Before you ever call branch, your code should be running with a default branch called “master”.
+     * A branch is nothing more than a name for a reference (a SHA-1 identifier)
+     * to a commit node.
+     * This command does NOT immediately switch to the newly created branch.
+     * Before you ever call branch,
+     * your code should be running with a default branch called “master”.
      *
      * @param branchName branch name from user input
      */
@@ -484,8 +457,10 @@ public class Repository implements Serializable, Dumpable {
     }
 
     /**
-     * Deletes the branch with the given name. This only means to delete the pointer associated with the branch;
-     * it does not mean to delete all commits that were created under the branch, or anything like that.
+     * Deletes the branch with the given name.
+     * This only means to delete the pointer associated with the branch;
+     * it does not mean to delete all commits that were created under the branch,
+     * or anything like that.
      *
      * @param given branch name from user input
      */
@@ -507,7 +482,6 @@ public class Repository implements Serializable, Dumpable {
         String commitID = Utils.readContentsAsString(branch);
         Commit commit = Commit.read(commitID);
 
-        // TODO Test rm-branch
         while (commit.hasParent()) {
             for (String b : commit.getBranches()) {
                 if (branchName.equals(b) && commit.getParent(b) != null) {
@@ -527,8 +501,10 @@ public class Repository implements Serializable, Dumpable {
      * Removes tracked files that are not present in that commit.
      * Also moves the current branch’s head to that commit node.
      *
-     * The [commit id] may be abbreviated as for checkout. The staging area is cleared.
-     * The command is essentially checkout of an arbitrary commit that also changes the current branch head.
+     * The [commit id] may be abbreviated as for checkout.
+     * The staging area is cleared.
+     * The command is essentially checkout of an arbitrary commit
+     * that also changes the current branch head.
      *
      * @param given
      */
@@ -703,7 +679,6 @@ public class Repository implements Serializable, Dumpable {
      * @param p2 HEAD commit of b2
      * @return
      */
-    // TODO debug
     private Commit findSplittingPoint(String b1, String b2, Commit p1, Commit p2) {
         Commit split = null;
         Set<String> seen = new HashSet<>();
@@ -746,8 +721,10 @@ public class Repository implements Serializable, Dumpable {
             seen.add(cid2);
             p2 = Commit.read(p2.getParent(b2));
         }
-
-        if (split == null) split = new Commit(); // Split being null means the branches split at the initial commit
+        // Split being null means the branches split at the initial commit
+        if (split == null) {
+            split = new Commit();
+        }
         return split;
     }
 
@@ -767,7 +744,9 @@ public class Repository implements Serializable, Dumpable {
     }
 
     public static void save(Repository repo) {
-        if (repo == null) return;
+        if (repo == null) {
+            return;
+        }
         Utils.writeObject(Utils.join(GITLET_DIR, "Repository"), repo);
     }
 
@@ -779,7 +758,7 @@ public class Repository implements Serializable, Dumpable {
     public static Repository load() {
         try {
             return Utils.readObject(Utils.join(GITLET_DIR, "Repository"), Repository.class);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             throw Utils.error("Not in an initialized Gitlet directory.");
         }
     }

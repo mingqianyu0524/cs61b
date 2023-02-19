@@ -132,7 +132,7 @@ public class Commit implements Serializable {
         String parent = null;
         try {
             parent = this.parents.get(branch);
-        } catch (NullPointerException e) {
+        } catch (ClassCastException | NullPointerException e) {
             throw error("Commit not on given branch.");
         }
         return parent;
@@ -148,13 +148,14 @@ public class Commit implements Serializable {
      * @return updated commit
      */
     public Commit branch(String newBranch, String currentBranch) {
-       try {
-           this.parents.put(newBranch, this.parents.get(currentBranch));
-       } catch (Exception e) {
+        try {
+            this.parents.put(newBranch, this.parents.get(currentBranch));
+        } catch (UnsupportedOperationException | ClassCastException |
+                NullPointerException | IllegalArgumentException e) {
            throw error("Error creating new branch");
-       }
-       this.save();
-       return this;
+        }
+        this.save();
+        return this;
     }
 
     public void removeBranch(String branch) {
