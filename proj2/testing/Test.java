@@ -1,14 +1,18 @@
 package testing;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Test {
     public static void main(String[] args) {
-        String regex = "[\\s-_.A-Za-z0-9]+";
-        Pattern p = Pattern.compile(regex);
-        Matcher m = p.matcher("commitadded wug");
-        boolean b = m.matches();
-        System.out.println(b);
+        Map<String, String> map = new HashMap<>();
+        map.put("master", "7afb");
+        map.put("dev", "null");
+        map.put("test", "4adc");
+        System.out.println(new HashSet<>(map.values()).size());
+        System.out.println(map.containsValue(null));
     }
 }

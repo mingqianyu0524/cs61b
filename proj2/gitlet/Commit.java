@@ -31,19 +31,16 @@ public class Commit implements Serializable {
     private String timestamp;
     /**
      * Tree of the current working directory at the time of this commit
-     * Under the assumption that the depth of the tree is 1, it's reasonable to use a map data structure
-     * to represent the tree.
+     * Under the assumption that the depth of the tree is 1,
+     * it's reasonable to use a map data structure to represent the tree.
      *
      * Key = file name
      * Value = file blob SHA1
      */
     private final Map<String, String> tree;
-    /**
-     * Parent commit SHA1
-     */
-    private final String parent;
-    /* Branch of the commit */
-    private String branch;
+
+    /* Maps branch name to parent commit sha1 */
+    private Map<String, String> parents = new HashMap<>();
 
     /**
      * Create initial commit object
@@ -52,21 +49,20 @@ public class Commit implements Serializable {
         this.message = INITIAL_COMMIT_MSG;
         setTimestamp(true);
         this.tree = new HashMap<>();
-        this.parent = null;
-        this.branch = "master";
+        parents.put("master", null);
     }
 
-    public Commit(String message, Map<String, String> tree, String parent, String branch) {
+    public Commit(String message, Map<String, String> tree, String branch, String parent) {
         this.message = message;
         setTimestamp(false);
         this.tree = tree;
-        this.parent = parent;
-        this.branch = branch;
+        assert branch != null;
+        this.parents.put(branch, parent);
     }
 
     /** Serialize the commit and store into repository, return the SHA-1 of the commit object */
     public void save() {
-        String fileName = sha1((Object) serialize(this));
+        String fileName = this.getCommitUID();
         File f = join(COMMITS_DIR, fileName);
         writeObject(f, this);
     }
@@ -90,8 +86,8 @@ public class Commit implements Serializable {
         }
 
         // Match the provided commit id with the file names under the directory
-        // The project description specified a more efficient way of organizing the commit directory structure
-        // in order to speed up the lookup process.
+        // The project description specified a more efficient way of organizing
+        // the commit directory structure in order to speed up the lookup process.
         List<String> commitIDs = Utils.plainFilenamesIn(Utils.join(COMMITS_DIR));
         assert commitIDs != null;
         String filename = "";
@@ -111,7 +107,7 @@ public class Commit implements Serializable {
     public void setTimestamp(boolean init) {
         DateFormat df = new SimpleDateFormat("E MMM dd HH:mm:ss yyyy Z");
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
-        Date date = init? new Date(0L) : new Date();
+        Date date = init ? new Date(0L) : new Date();
         this.timestamp = df.format(date);
     }
 
@@ -128,8 +124,42 @@ public class Commit implements Serializable {
         return this.message;
     }
 
-    public String getParent() {
-        return this.parent;
+    public void addParent(String branchToMerge, String branchHead) {
+        this.parents.put(branchToMerge, branchHead);
+    }
+
+    public String getParent(String branch) {
+        String parent = null;
+        try {
+            parent = this.parents.get(branch);
+        } catch (NullPointerException e) {
+            throw error("Commit not on given branch.");
+        }
+        return parent;
+    }
+
+    public Collection<String> getParents() {
+        return this.parents.values();
+    }
+
+    /**
+     * Create the new newBranch, and update the commit parents
+     * @param newBranch newly created newBranch
+     * @return updated commit
+     */
+    public Commit branch(String newBranch, String currentBranch) {
+       try {
+           this.parents.put(newBranch, this.parents.get(currentBranch));
+       } catch (Exception e) {
+           throw error("Error creating new branch");
+       }
+       this.save();
+       return this;
+    }
+
+    public void removeBranch(String branch) {
+        this.parents.remove(branch);
+        this.save();
     }
 
     /**
@@ -150,7 +180,7 @@ public class Commit implements Serializable {
         try {
             String blob = Utils.readContentsAsString(Utils.join(BLOBS_DIR, blobName));
             Utils.writeContents(Utils.join(CWD, filename), blob);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             throw error("A branch with that name does not exist.");
         }
     }
@@ -159,7 +189,15 @@ public class Commit implements Serializable {
         return tree;
     }
 
-    public String getBranch() {
-        return this.branch;
+    public Set<String> getBranches() {
+        return new HashSet<>(this.parents.keySet());
+    }
+
+    public String getCommitUID() {
+        return sha1(this.timestamp + this.message);
+    }
+
+    public boolean hasParent() {
+        return !this.parents.containsValue(null);
     }
 }

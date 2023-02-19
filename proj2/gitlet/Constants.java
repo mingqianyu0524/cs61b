@@ -48,6 +48,6 @@ public class Constants {
 
     public static final String BRANCH_NOT_EXIST = "No such branch exists.";
 
-    public static final String UNTRACKED_ERR = "There is an untracked file in the way; " +
-            "delete it, or add and commit it first.";
+    public static final String UNTRACKED_ERR = "There is an untracked file in the way; "
+            + "delete it, or add and commit it first.";
 }

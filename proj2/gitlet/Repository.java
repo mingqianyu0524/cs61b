@@ -80,7 +80,7 @@ public class Repository implements Serializable, Dumpable {
         // Create the master branch and assign the HEAD pointer
         this.head = commit;
         File branch = Utils.join(BRANCHES_DIR, currentBranch);
-        writeContents(branch, Utils.sha1((Object) serialize(commit)));
+        writeContents(branch, commit.getCommitUID());
         this.currentBranch = "master";
 
         // Save this repository object under .gitlet/
@@ -194,7 +194,7 @@ public class Repository implements Serializable, Dumpable {
      *
      * @param message
      */
-    public void commit(String message) {
+    public void commit(String message, String branchToMerge) {
         // The commit message must not be empty
         if (message == null || message.isEmpty()) {
             throw error(COMMIT_MSG_MISSING_ERR);
@@ -205,7 +205,11 @@ public class Repository implements Serializable, Dumpable {
 
         // Clone the HEAD commit, modify its message and timestamp according to user input
         // Most importantly, set the parent of this new commit to the original HEAD commit
-        Commit commit = new Commit(message, head.getTree(), sha1((Object) serialize(head)), currentBranch);
+        Commit commit = new Commit(message, head.getTree(), currentBranch, head.getCommitUID());
+        if (!branchToMerge.isEmpty()) {
+            String branchHead = Utils.readContentsAsString(Utils.join(BRANCHES_DIR, branchToMerge));
+            commit.addParent(branchToMerge, branchHead);
+        }
 
         // The staging area must not be empty
         if (staging.stagedForAddition.isEmpty() && staging.stagedForRemoval.isEmpty()) {
@@ -232,9 +236,11 @@ public class Repository implements Serializable, Dumpable {
 
         // Update the HEAD + branch pointer to the new commit
         this.head = commit;
-        File branch = Utils.join(BRANCHES_DIR, currentBranch);
-        readContentsAsString(branch);
-        writeContents(branch, Utils.sha1((Object) serialize(commit)));
+        for (String branchName : commit.getBranches()) {
+            File branch = Utils.join(BRANCHES_DIR, branchName);
+            readContentsAsString(branch);
+            writeContents(branch, commit.getCommitUID());
+        }
 
         // Store any new or modified commit object into the file system and clean up the staging area
         commit.save();
@@ -344,22 +350,32 @@ public class Repository implements Serializable, Dumpable {
 
     }
 
-    // TODO: Per project specs, the log() function will need to support "Merge"
+    // TODO: add merge support
     public void log() {
         Commit ptr = head;
         while (ptr != null) {
-            String filename = Utils.sha1((Object) serialize(ptr));
+            String filename = ptr.getCommitUID();
 
             System.out.println("===");
             System.out.printf("commit %s%n", filename);
+
+            // Handle merge commits
+            if (new HashSet<String>(ptr.getParents()).size() > 1) {
+                StringBuilder commits = new StringBuilder();
+                for (String parent : ptr.getParents()) {
+                    commits.append(parent, 0, 7).append(" ");
+                }
+                System.out.println("Merge: " + commits.toString());
+            }
+
             System.out.printf("Date: %s%n", ptr.getTimeStamp());
             System.out.println(ptr.getMessage());
             System.out.println();
 
-            if (ptr.getParent() == null) {
+            if (ptr.getParent(currentBranch) == null) {
                 break;
             }
-            ptr = Commit.read(ptr.getParent());
+            ptr = Commit.read(ptr.getParent(currentBranch));
         }
     }
 
@@ -459,6 +475,7 @@ public class Repository implements Serializable, Dumpable {
                 throw error("A branch with that name already exists.");
             }
         }
+        head = head.branch(branchName, currentBranch);
         // The new branch points to the current branch's HEAD commit
         File f = new File(BRANCHES_DIR, branchName);
         File branch = Utils.join(BRANCHES_DIR, currentBranch);
@@ -484,8 +501,25 @@ public class Repository implements Serializable, Dumpable {
             }
         }
         if (branchName.isEmpty()) throw error("A branch with that name does not exist.");
+
+        // Trace back from branch HEAD and update all parents commit objects
+        File branch = Utils.join(BRANCHES_DIR, branchName);
+        String commitID = Utils.readContentsAsString(branch);
+        Commit commit = Commit.read(commitID);
+
+        // TODO Test rm-branch
+        while (commit.hasParent()) {
+            for (String b : commit.getBranches()) {
+                if (branchName.equals(b) && commit.getParent(b) != null) {
+                    Commit prev = Commit.read(commit.getParent(b));
+                    commit.removeBranch(b);
+                    commit = prev;
+                }
+            }
+        }
+
         // Delete branch
-        Utils.join(BRANCHES_DIR, branchName).delete();
+        branch.delete();
     }
 
     /**
@@ -498,21 +532,23 @@ public class Repository implements Serializable, Dumpable {
      *
      * @param given
      */
-
-    // TODO: Debug 24, do we keep commit ${1} after resetting to ${2}?
-
     public void reset(String given) {
         List<String> untracked = this.getUntracked();
         if (!untracked.isEmpty()) {
             throw error(UNTRACKED_ERR);
         }
         Commit commit = Commit.read(given);
-        String branch = commit.getBranch();
+        Set<String> branches = commit.getBranches();
         checkoutCommit(commit);
         this.staging = new Staging();
         this.head = commit;
-        // Set the branch HEAD as well
-        Utils.writeContents(Utils.join(BRANCHES_DIR, branch), given);
+
+        // Set the branch HEAD as well for only the current branch in the commits
+        for (String branch : branches) {
+            if (branch.equals(currentBranch)) {
+                Utils.writeContents(Utils.join(BRANCHES_DIR, branch), given);
+            }
+        }
     }
 
     /**
@@ -542,15 +578,15 @@ public class Repository implements Serializable, Dumpable {
         // Find the split point: p1 -> current branch, p2 -> target branch
         Commit p1 = head;
         Commit p2 = Commit.read(Utils.readContentsAsString(branch));
-        Commit split = findSplittingPoint(p1, p2);
+        Commit split = findSplittingPoint(currentBranch, target, p1, p2);
 
         Commit other = Commit.read(Utils.readContentsAsString(branch));
 
         // Special merge cases
-        if (Utils.sha1((Object) serialize(other)).equals(Utils.sha1((Object) serialize(split)))) {
+        if (other.getCommitUID().equals(split.getCommitUID())) {
             throw error("Given branch is an ancestor of the current branch.");
         }
-        if (Utils.sha1((Object) serialize(head)).equals(Utils.sha1((Object) serialize(split)))) {
+        if (head.getCommitUID().equals(split.getCommitUID())) {
             checkoutCommit(other);
             throw error("Current branch fast-forwarded.");
         }
@@ -578,13 +614,13 @@ public class Repository implements Serializable, Dumpable {
 
             // Result has 2^5 = 32 total permutations, only 12 are valid.
             // =============================================================================
-            // case1: modified HEAD     TTTFT, TTFFT, TTFFF -> HEAD                 (3)
-            // case2: modified other    TFTTT, FFTTT, FFTTF -> other                (3)
+            // case1: modified HEAD     TTTFT, TTFFF -> HEAD                        (2)
+            // case2: modified other    TFTTT, FFTTF -> other                       (2)
             // case3: HEAD/other/split  TFTFT -> HEAD/other/split                   (1)
             // case3: unmodified HEAD   TFFFT -> remove                             (1)
             // case4: unmodified other  FFTFT -> remain removed                     (1)
             // case5: removed           FFFFT -> do nothing                         (1)
-            // case5: HEAD != other     TTTT- -> resolve conflict (OR do nothing)   (2)
+            // case5: HEAD != other     TTTT-, TTFFT, FFTTT -> resolve conflict     (4)
             // =============================================================================
             // invalid:                 FFFFF, FT---, --FT-, etc.                   (20)
 
@@ -630,7 +666,7 @@ public class Repository implements Serializable, Dumpable {
             message("Encountered a merge conflict.");
         }
         // create merged commit
-        commit("Merged " + target + " into " + currentBranch + ".");
+        commit("Merged " + target + " into " + currentBranch + ".", target);
     }
 
     private boolean resolveMergeConflict(String filename, Commit current, Commit target, boolean encountered) {
@@ -667,16 +703,17 @@ public class Repository implements Serializable, Dumpable {
      * @param p2 HEAD commit of b2
      * @return
      */
-    private Commit findSplittingPoint(Commit p1, Commit p2) {
+    // TODO debug
+    private Commit findSplittingPoint(String b1, String b2, Commit p1, Commit p2) {
         Commit split = null;
         Set<String> seen = new HashSet<>();
 
         assert p1 != null && p2 != null;
         // Two pointers algorithm, note that if we store seen commits instead of UID,
         // hashcode and equals method in Commit class are required to be overwritten
-        while (p1.getParent() != null && p2.getParent() != null) {
-            String cid1 = Utils.sha1((Object) serialize(p1));
-            String cid2 = Utils.sha1((Object) serialize(p2));
+        while (p1.getParent(b1) != null && p2.getParent(b2) != null) {
+            String cid1 = p1.getCommitUID();
+            String cid2 = p2.getCommitUID();
             if (cid1.equals(cid2) || seen.contains(cid1)) {
                 split = p1;
                 break;
@@ -686,26 +723,28 @@ public class Repository implements Serializable, Dumpable {
             } else {
                 seen.addAll(Arrays.asList(cid1, cid2));
             }
-            p1 = Commit.read(p1.getParent());
-            p2 = Commit.read(p2.getParent());
+            p1 = Commit.read(p1.getParent(b1));
+            p2 = Commit.read(p2.getParent(b2));
         }
-        while (split == null && p1.getParent() != null) {
-            String cid1 = Utils.sha1((Object) serialize(p1));
-            if (seen.contains(cid1)) {
+        while (split == null && p1.getParent(b1) != null) {
+            String cid1 = p1.getCommitUID();
+            String cid2 = p2.getCommitUID();
+            if (cid1.equals(cid2) || seen.contains(cid1)) {
                 split = p1;
                 break;
             }
             seen.add(cid1);
-            p1 = Commit.read(p1.getParent());
+            p1 = Commit.read(p1.getParent(b1));
         }
-        while (split == null && p2.getParent() != null) {
-            String cid2 = Utils.sha1((Object) serialize(p2));
-            if (seen.contains(Utils.sha1((Object) serialize(p2)))) {
+        while (split == null && p2.getParent(b2) != null) {
+            String cid1 = p1.getCommitUID();
+            String cid2 = p2.getCommitUID();
+            if (cid1.equals(cid2) || seen.contains(p2.getCommitUID())) {
                 split = p2;
                 break;
             }
             seen.add(cid2);
-            p2 = Commit.read(p2.getParent());
+            p2 = Commit.read(p2.getParent(b2));
         }
 
         if (split == null) split = new Commit(); // Split being null means the branches split at the initial commit
@@ -815,10 +854,12 @@ public class Repository implements Serializable, Dumpable {
     public void dump() {
         System.out.println("=============Dumping Repository=============");
         System.out.printf("current branch name: %s%n", currentBranch);
-        System.out.printf("commit id: %s%n", Utils.sha1((Object) Utils.serialize(head)));
+        System.out.printf("commit id: %s%n", head.getCommitUID());
         System.out.printf("commit msg: %s%n", head.getMessage());
         System.out.printf("commit timestamp: %s%n", head.getTimeStamp());
-        System.out.printf("commit parent: %s%n", head.getParent());
+        for (String branch : head.getBranches()) {
+            System.out.printf("commit is on branch %s, parent: %s%n", branch, head.getParent(branch));
+        }
         System.out.println("staged for addition");
         for (Map.Entry<String, String> entry : staging.stagedForAddition.entrySet()) {
             System.out.printf("key: %s, value: %s%n", entry.getKey(), entry.getValue());
